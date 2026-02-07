@@ -1,13 +1,39 @@
 // Shared config for dimensions and layout
 var CONFIG = {
-   
-
     FONT_FAMILY: 'Arial',
     TEXT_COLOR: '#333333',
     
-   
-   
-    RESET_PROGRESS : false,         // Set to true to clear saved progress on load
+    RESET_PROGRESS: false,         // Set to true to clear saved progress on load
+    
+    // Vehicle Physics Config
+    VEHICLE: {
+        CHASSIS_WIDTH: 100,
+        CHASSIS_HEIGHT: 50,
+        WHEEL_RADIUS: 20,
+        WHEEL_OFFSET_Y: 20,  // Distance from chassis center to wheel center
+        WHEEL_SPACING: 70,   // Distance between front and rear wheels
+        
+        // Spring/Suspension properties
+        SPRING_STIFFNESS: 0.06,
+        SPRING_DAMPING: 0.01,
+        SPRING_LENGTH: 30,
+        
+        // Motor properties
+        MAX_POWER: 0.15,      // Maximum torque/power
+        FRICTION: 0.01,
+        WHEEL_FRICTION: 1.5,
+        WHEEL_GRIP: 0.003,
+        
+        // Starting position
+        START_X: 200,
+        START_Y: 300,
+    },
+    
+    // Physics world settings
+    PHYSICS: {
+        GRAVITY_Y: 1.2,
+        DEBUG: true,  // Show physics debug rendering
+    },
     
     // Color palette (kept for potential future use)
     SASHA_PALETTE: [
