@@ -12,6 +12,7 @@ var CONFIG = {
         WHEEL_RADIUS: 20,
         REAR_WHEEL_OFFSET_X: -38,  // Horizontal offset for rear wheel from chassis center
         REAR_WHEEL_OFFSET_Y: 25,   // Vertical offset for rear wheel from chassis center (positive = down)
+        
         FRONT_WHEEL_OFFSET_X: 38,  // Horizontal offset for front wheel from chassis center
         FRONT_WHEEL_OFFSET_Y: 25,  // Vertical offset for front wheel from chassis center (positive = down)
         
@@ -19,61 +20,69 @@ var CONFIG = {
         DEBUG_WHEEL_OFFSET: false,  // Show yellow circles at wheel offset positions
         
         // Custom debug offset point (for checking relative positions)
-        DEBUG_POINT_SHOW: true,    // Show/hide the custom debug point
+        DEBUG_POINT_SHOW: false,    // Show/hide the custom debug point
         DEBUG_POINT_OFFSET_X: -38,   // X offset from chassis center
         DEBUG_POINT_OFFSET_Y: 25,   // Y offset from chassis center (positive = down)
         
         // Spring/Suspension properties
-        SPRING_STIFFNESS: 0.5,//0.08
-        SPRING_DAMPING: 0.03,
-        SPRING_LENGTH: 5,
+        SPRING_STIFFNESS: 1,       // Much higher stiffness prevents compression/sinking
+        SPRING_DAMPING: 0.05,         // Damping to reduce bounce
+        SPRING_LENGTH: 5,           // Matches wheel offset Y exactly (no compression at rest)
         
         // Motor properties
         MAX_POWER: 0.15,      // Maximum torque/power
+        ACCELERATION: 0.05,   // How fast the motor speeds up (like Hill Climb Racing)
+        DECELERATION: 0.08,   // How fast the motor slows down
         FRICTION: 0.01,
         WHEEL_FRICTION: 1.5,
         WHEEL_GRIP: 0.003,
         
-        // Weight and physics
-        WEIGHT_MULTIPLIER: 0.5,  // Multiplier for chassis and wheel density
+        // Weight and physics (using direct mass, independent of sprite size)
+        CHASSIS_MASS: 10,     // Direct mass value for chassis
+        WHEEL_MASS: 1,        // Direct mass value for each wheel
         
         // Starting position
         START_X: 200,
         SPAWN_HEIGHT: 700,     // Height at which vehicle spawns and falls
     },
     
+    // Terrain Configuration
+    TERRAIN: {
+        // Flat ground section
+        FLAT_GROUND_Y: 870,        // Top of flat ground
+        FLAT_GROUND_WIDTH: 1200,   // Width of flat ground
+        FLAT_GROUND_X_START: 0,    // Starting X position
+        
+        // Slope section
+        SLOPE_START_X: 1200,       // Where slope begins
+        SLOPE_END_X: 1600,         // Where slope ends
+        SLOPE_TOP_Y: 720,          // Top of slope (right side)
+        SLOPE_BOTTOM_Y: 870,       // Bottom of slope (left side)
+        SLOPE_WIDTH: 450,          // Width of slope collider
+        SLOPE_ANGLE: -0.35,        // Angle of slope in radians
+        
+        // Top platform section
+        PLATFORM_X: 1600,          // Starting X of platform
+        PLATFORM_Y: 720,           // Top of platform
+        PLATFORM_WIDTH: 600,       // Width of platform
+        
+        // World bounds
+        WORLD_HEIGHT: 1280,        // Bottom boundary
+    },
+    
     // Physics world settings
     PHYSICS: {
-        GRAVITY_Y: 1.2,
+        GRAVITY_Y: 0.5,
         DEBUG: true,  // Show physics debug rendering
+        
+        // Physics engine timing (to prevent tunneling)
+        FPS: 60,              // Physics steps per second
+        DELTA: 1000/60,       // Time step in milliseconds (1000/FPS)
+        ITERATIONS: 10,       // Constraint solver iterations (higher = more accurate but slower)
         
         // Individual collider visibility (only works when DEBUG is true)
         DEBUG_CHASSIS_COLLIDER: true,   // Show/hide chassis collider outline
         DEBUG_WHEEL_COLLIDER: true,      // Show/hide wheel collider outlines
         DEBUG_GROUND_COLLIDER: true,    // Show/hide ground collider outlines
-    },
-    
-    // Color palette (kept for potential future use)
-    SASHA_PALETTE: [
-        { name: 'Red', hex: '#e6194b', tint: '#fad1da' },
-        { name: 'Green', hex: '#3cb44b', tint: '#d8f0db' },
-        { name: 'Blue', hex: '#4363d8', tint: '#d9e0f7' },
-        { name: 'Orange', hex: '#f58231', tint: '#fde6d6' },
-        { name: 'Purple', hex: '#911eb4', tint: '#e9d2f0' },
-        { name: 'Teal', hex: '#469990', tint: '#daebe9' },
-        { name: 'Olive', hex: '#808000', tint: '#e6e6cc' },
-        { name: 'Magenta', hex: '#f032e6', tint: '#fcd6f6' },
-        { name: 'Pink', hex: '#fabed4', tint: '#fef2f6' },
-        { name: 'Lavender', hex: '#dcbeff', tint: '#f8f2ff' },
-        { name: 'Beige', hex: '#fffac8', tint: '#fffef4' },
-        { name: 'Maroon', hex: '#800000', tint: '#e6cccc' },
-        { name: 'Mint', hex: '#aaffc3', tint: '#eefff3' },
-        { name: 'Apricot', hex: '#ffd8b1', tint: '#fff7ef' },
-        { name: 'Navy', hex: '#000075', tint: '#ccccdf' },
-        { name: 'Grey', hex: '#a9a9a9', tint: '#eeeeee' },
-        { name: 'Brown', hex: '#9a6324', tint: '#ebe0d3' },
-        { name: 'Yellow', hex: '#ffe119', tint: '#fff9d1' },
-        { name: 'Cyan', hex: '#42d4f4', tint: '#d9f6fd' },
-        { name: 'Lime', hex: '#bfef45', tint: '#f2fccd' }
-    ]
+    }
 };

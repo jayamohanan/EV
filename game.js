@@ -9,6 +9,11 @@ class VehicleScene extends Phaser.Scene {
         this.motorPower = 0;
         this.isForward = false;
         this.isReverse = false;
+        
+        // Define collision categories for use across all physics bodies
+        this.CATEGORY_GROUND = 0x0001;
+        this.CATEGORY_CHASSIS = 0x0002;
+        this.CATEGORY_WHEEL = 0x0004;
     }
 
     preload() {
@@ -31,8 +36,11 @@ class VehicleScene extends Phaser.Scene {
         // Create vehicle with spring suspension
         this.createVehicle();
         
-        // Create UI controls (Forward/Reverse buttons)
+        // Create UI controls (Gas/Brake buttons)
         this.createControls();
+        
+        // Setup keyboard controls
+        this.cursors = this.input.keyboard.createCursorKeys();
         
         // Setup camera
         this.cameras.main.setBounds(0, 0, 2400, 1280);
@@ -56,80 +64,106 @@ class VehicleScene extends Phaser.Scene {
         graphics.fillStyle(0x8B4513, 1);
         graphics.lineStyle(5, 0x654321, 1);
         
-        // Define collision category for ground
-        const groundCategory = 0x0001;
+        const tc = CONFIG.TERRAIN;  // Terrain config
         
         // Store ground bodies for reference
         this.groundBodies = [];
         
-        // Flat ground - draw filled rectangle
-        graphics.fillRect(0, 870, 1200, 60);
-        graphics.strokeRect(0, 870, 1200, 60);
-        // Physics body: top at y=870, extends downward 40px
-        // Matter.js needs volume for collision, can't use single line
+        // Flat ground - fill entire bottom area
+        const groundHeight = tc.WORLD_HEIGHT - tc.FLAT_GROUND_Y;
+        graphics.fillRect(tc.FLAT_GROUND_X_START, tc.FLAT_GROUND_Y, tc.FLAT_GROUND_WIDTH, groundHeight);
+        graphics.strokeRect(tc.FLAT_GROUND_X_START, tc.FLAT_GROUND_Y, tc.FLAT_GROUND_WIDTH, groundHeight);
+        // Physics body: thick collider covering the entire ground volume
+        const groundCenterY = tc.FLAT_GROUND_Y + groundHeight / 2;
         this.groundBodies.push(
-            this.matter.add.rectangle(600, 890, 1200, 40, {
-                isStatic: true,
-                friction: 1,
-                collisionFilter: {
-                    category: groundCategory,
-                    mask: 0xFFFFFFFF  // Collide with everything
-                },
-                render: {
-                    visible: CONFIG.PHYSICS.DEBUG_GROUND_COLLIDER,
-                    lineColor: 0x00FF00,
-                    lineWidth: 2
+            this.matter.add.rectangle(
+                tc.FLAT_GROUND_X_START + tc.FLAT_GROUND_WIDTH / 2,
+                groundCenterY,
+                tc.FLAT_GROUND_WIDTH,
+                groundHeight,
+                {
+                    isStatic: true,
+                    friction: 1,
+                    restitution: 0,  // No bounce
+                    collisionFilter: {
+                        category: this.CATEGORY_GROUND,
+                        mask: 0xFFFFFFFF  // Collide with everything
+                    },
+                    render: {
+                        visible: CONFIG.PHYSICS.DEBUG_GROUND_COLLIDER,
+                        lineColor: 0x00FF00,
+                        lineWidth: 2
+                    }
                 }
-            })
+            )
         );
         
-        // Slope - visual
+        // Slope - visual (fill to bottom)
         graphics.fillStyle(0x8B4513, 1);
         graphics.beginPath();
-        graphics.moveTo(1200, 870);
-        graphics.lineTo(1600, 720);
-        graphics.lineTo(1600, 780);
-        graphics.lineTo(1200, 930);
+        graphics.moveTo(tc.SLOPE_START_X, tc.SLOPE_BOTTOM_Y);  // Start at flat ground top
+        graphics.lineTo(tc.SLOPE_END_X, tc.SLOPE_TOP_Y);       // Top of slope
+        graphics.lineTo(tc.SLOPE_END_X, tc.WORLD_HEIGHT);      // Bottom right
+        graphics.lineTo(tc.SLOPE_START_X, tc.WORLD_HEIGHT);    // Bottom left
         graphics.closePath();
         graphics.fillPath();
         graphics.strokePath();
         
-        // Slope physics body - thick enough to prevent tunneling
+        // Slope physics body - thick collider
+        const slopeHeight = 180;  // Thick collider
+        const slopeCenterX = (tc.SLOPE_START_X + tc.SLOPE_END_X) / 2;
         this.groundBodies.push(
-            this.matter.add.rectangle(1400, 805, 450, 40, {
-                isStatic: true,
-                friction: 1,
-                angle: -0.35,
-                collisionFilter: {
-                    category: groundCategory,
-                    mask: 0xFFFFFFFF  // Collide with everything
-                },
-                render: {
-                    visible: CONFIG.PHYSICS.DEBUG_GROUND_COLLIDER,
-                    lineColor: 0x00FF00,
-                    lineWidth: 2
+            this.matter.add.rectangle(
+                slopeCenterX,
+                tc.SLOPE_TOP_Y + slopeHeight / 2,
+                tc.SLOPE_WIDTH,
+                slopeHeight,
+                {
+                    isStatic: true,
+                    friction: 1,
+                    restitution: 0,  // No bounce
+                    angle: tc.SLOPE_ANGLE,
+                    collisionFilter: {
+                        category: this.CATEGORY_GROUND,
+                        mask: 0xFFFFFFFF  // Collide with everything
+                    },
+                    render: {
+                        visible: CONFIG.PHYSICS.DEBUG_GROUND_COLLIDER,
+                        lineColor: 0x00FF00,
+                        lineWidth: 2
+                    }
                 }
-            })
+            )
         );
         
-        // Top platform - thick collider with top aligned to visual
+        // Top platform - fill to bottom
         graphics.fillStyle(0x8B4513, 1);
-        graphics.fillRect(1600, 720, 600, 60);
-        graphics.strokeRect(1600, 720, 600, 60);
+        const platformHeight = tc.WORLD_HEIGHT - tc.PLATFORM_Y;
+        graphics.fillRect(tc.PLATFORM_X, tc.PLATFORM_Y, tc.PLATFORM_WIDTH, platformHeight);
+        graphics.strokeRect(tc.PLATFORM_X, tc.PLATFORM_Y, tc.PLATFORM_WIDTH, platformHeight);
+        const platformCenterY = tc.PLATFORM_Y + platformHeight / 2;
+        const platformCenterX = tc.PLATFORM_X + tc.PLATFORM_WIDTH / 2;
         this.groundBodies.push(
-            this.matter.add.rectangle(1900, 740, 600, 40, {
-                isStatic: true,
-                friction: 1,
-                collisionFilter: {
-                    category: groundCategory,
-                    mask: 0xFFFFFFFF  // Collide with everything
-                },
-                render: {
-                    visible: CONFIG.PHYSICS.DEBUG_GROUND_COLLIDER,
-                    lineColor: 0x00FF00,
-                    lineWidth: 2
+            this.matter.add.rectangle(
+                platformCenterX,
+                platformCenterY,
+                tc.PLATFORM_WIDTH,
+                platformHeight,
+                {
+                    isStatic: true,
+                    friction: 1,
+                    restitution: 0,  // No bounce
+                    collisionFilter: {
+                        category: this.CATEGORY_GROUND,
+                        mask: 0xFFFFFFFF  // Collide with everything
+                    },
+                    render: {
+                        visible: CONFIG.PHYSICS.DEBUG_GROUND_COLLIDER,
+                        lineColor: 0x00FF00,
+                        lineWidth: 2
+                    }
                 }
-            })
+            )
         );
     }
 
@@ -138,19 +172,14 @@ class VehicleScene extends Phaser.Scene {
         const x = vc.START_X;
         const y = vc.SPAWN_HEIGHT;
         
-        // Define collision categories
-        const chassisCategory = 0x0002;
-        const wheelCategory = 0x0004;
-        const groundCategory = 0x0001;
-        
         // Create chassis (NO COLLISION with ground or wheels)
-        // Chassis weight is 10x wheel weight (density 0.01 vs 0.001)
+        // Using direct mass instead of density (mass doesn't change with sprite size)
         this.vehicle = {
             chassis: this.matter.add.rectangle(x, y, vc.CHASSIS_WIDTH, vc.CHASSIS_HEIGHT, {
-                density: 0.01 * vc.WEIGHT_MULTIPLIER,  // 10x wheel density, multiplied
+                mass: vc.CHASSIS_MASS,  // Direct mass value
                 friction: vc.FRICTION,
                 collisionFilter: {
-                    category: chassisCategory,
+                    category: this.CATEGORY_CHASSIS,
                     mask: 0  // Don't collide with anything
                 },
                 render: {
@@ -164,11 +193,12 @@ class VehicleScene extends Phaser.Scene {
                 y + vc.REAR_WHEEL_OFFSET_Y,
                 vc.WHEEL_RADIUS,
                 {
-                    density: 0.001 * vc.WEIGHT_MULTIPLIER,  // Base wheel density, multiplied
+                    mass: vc.WHEEL_MASS,  // Direct mass value
                     friction: vc.WHEEL_FRICTION,
+                    restitution: 0,  // No bounce
                     collisionFilter: {
-                        category: wheelCategory,
-                        mask: groundCategory  // Collide with ground only
+                        category: this.CATEGORY_WHEEL,
+                        mask: this.CATEGORY_GROUND  // Collide with ground only
                     },
                     render: {
                         visible: CONFIG.PHYSICS.DEBUG_WHEEL_COLLIDER
@@ -182,11 +212,12 @@ class VehicleScene extends Phaser.Scene {
                 y + vc.FRONT_WHEEL_OFFSET_Y,
                 vc.WHEEL_RADIUS,
                 {
-                    density: 0.001 * vc.WEIGHT_MULTIPLIER,  // Base wheel density, multiplied,
+                    mass: vc.WHEEL_MASS,  // Direct mass value
                     friction: vc.WHEEL_FRICTION,
+                    restitution: 0,  // No bounce
                     collisionFilter: {
-                        category: wheelCategory,
-                        mask: groundCategory  // Collide with ground only
+                        category: this.CATEGORY_WHEEL,
+                        mask: this.CATEGORY_GROUND  // Collide with ground only
                     },
                     render: {
                         visible: CONFIG.PHYSICS.DEBUG_WHEEL_COLLIDER
@@ -246,62 +277,68 @@ class VehicleScene extends Phaser.Scene {
     }
 
     createControls() {
-        const buttonWidth = 150;
-        const buttonHeight = 80;
-        const bottomMargin = 50;
-        const spacing = 20;
+        const buttonSize = 120;  // Square buttons
+        const bottomMargin = 80;
+        const sideMargin = 40;
         
-        // Forward button
-        this.forwardButton = this.add.rectangle(
-            180, 1280 - bottomMargin - buttonHeight / 2,
-            buttonWidth, buttonHeight, 0x27ae60
+        // Brake button (LEFT SIDE)
+        this.brakeButton = this.add.rectangle(
+            sideMargin + buttonSize / 2,
+            1280 - bottomMargin - buttonSize / 2,
+            buttonSize, buttonSize, 0xe74c3c
         ).setScrollFactor(0).setInteractive().setDepth(999);
         
-        this.forwardText = this.add.text(
-            180, 1280 - bottomMargin - buttonHeight / 2, 'FORWARD',
-            { fontSize: '20px', color: '#ffffff', fontStyle: 'bold' }
+        this.brakeText = this.add.text(
+            sideMargin + buttonSize / 2,
+            1280 - bottomMargin - buttonSize / 2,
+            'BRAKE',
+            { fontSize: '24px', color: '#ffffff', fontStyle: 'bold' }
         ).setOrigin(0.5).setScrollFactor(0).setDepth(1000);
         
-        // Reverse button
-        this.reverseButton = this.add.rectangle(
-            180 + buttonWidth + spacing, 1280 - bottomMargin - buttonHeight / 2,
-            buttonWidth, buttonHeight, 0xe74c3c
+        // Gas button (RIGHT SIDE)
+        this.gasButton = this.add.rectangle(
+            720 - sideMargin - buttonSize / 2,
+            1280 - bottomMargin - buttonSize / 2,
+            buttonSize, buttonSize, 0x27ae60
         ).setScrollFactor(0).setInteractive().setDepth(999);
         
-        this.reverseText = this.add.text(
-            180 + buttonWidth + spacing, 1280 - bottomMargin - buttonHeight / 2, 'REVERSE',
-            { fontSize: '20px', color: '#ffffff', fontStyle: 'bold' }
+        this.gasText = this.add.text(
+            720 - sideMargin - buttonSize / 2,
+            1280 - bottomMargin - buttonSize / 2,
+            'GAS',
+            { fontSize: '24px', color: '#ffffff', fontStyle: 'bold' }
         ).setOrigin(0.5).setScrollFactor(0).setDepth(1000);
         
-        // Button interactions
-        this.forwardButton.on('pointerdown', () => {
+        // Gas button interactions
+        this.gasButton.on('pointerdown', () => {
             this.isForward = true;
-            this.forwardButton.setFillStyle(0x229954);
+            this.gasButton.setFillStyle(0x229954);
         });
         
-        this.forwardButton.on('pointerup', () => {
+        this.gasButton.on('pointerup', () => {
             this.isForward = false;
-            this.forwardButton.setFillStyle(0x27ae60);
+            this.gasButton.setFillStyle(0x27ae60);
         });
         
-        this.forwardButton.on('pointerout', () => {
+        this.gasButton.on('pointerout', () => {
             this.isForward = false;
-            this.forwardButton.setFillStyle(0x27ae60);
+            this.gasButton.setFillStyle(0x27ae60);
         });
         
-        this.reverseButton.on('pointerdown', () => {
+        // Brake button interactions
+        this.brakeButton.on('pointerdown', () => {
             this.isReverse = true;
-            this.reverseButton.setFillStyle(0xc0392b);
+            this.brakeButton.setFillStyle(0xc0392b);
         });
         
-        this.reverseButton.on('pointerup', () => {
+        this.brakeButton.on('pointerup', () => {
             this.isReverse = false;
-            this.reverseButton.setFillStyle(0xe74c3c);
+            this.brakeButton.setFillStyle(0xe74c3c);
         });
         
-        this.reverseButton.on('pointerout', () => {
+        this.brakeButton.on('pointerout', () => {
             this.isReverse = false;
-            this.reverseButton.setFillStyle(0xe74c3c);
+            this.brakeButton.setFillStyle(0xe74c3c);
         });
     }
 
@@ -321,29 +358,38 @@ class VehicleScene extends Phaser.Scene {
     applyMotorPower() {
         const vc = CONFIG.VEHICLE;
         
+        // Check keyboard input (Right arrow = forward, Left arrow = brake/reverse)
+        const keyboardForward = this.cursors.right.isDown;
+        const keyboardReverse = this.cursors.left.isDown;
+        
+        // Combine button and keyboard inputs
+        const isAccelerating = this.isForward || keyboardForward;
+        const isBraking = this.isReverse || keyboardReverse;
+        
         // Determine target power
         let targetPower = 0;
-        if (this.isForward) {
+        if (isAccelerating) {
             targetPower = vc.MAX_POWER;
-        } else if (this.isReverse) {
+        } else if (isBraking) {
             targetPower = -vc.MAX_POWER;
         }
         
-        // Smooth power transition
-        this.motorPower = Phaser.Math.Linear(this.motorPower, targetPower, 0.1);
+        // Gradual acceleration/deceleration (Hill Climb Racing style)
+        if (targetPower !== 0) {
+            // Accelerating - smooth ramp up
+            this.motorPower = Phaser.Math.Linear(this.motorPower, targetPower, vc.ACCELERATION);
+        } else {
+            // Decelerating - smooth ramp down
+            this.motorPower = Phaser.Math.Linear(this.motorPower, 0, vc.DECELERATION);
+        }
         
-        // Apply torque to wheels
+        // Apply torque to REAR WHEEL ONLY (rear-wheel drive)
         if (Math.abs(this.motorPower) > 0.001) {
             const torque = this.motorPower;
             
             this.matter.body.setAngularVelocity(
                 this.vehicle.rearWheel,
                 this.vehicle.rearWheel.angularVelocity + torque * vc.WHEEL_GRIP
-            );
-            
-            this.matter.body.setAngularVelocity(
-                this.vehicle.frontWheel,
-                this.vehicle.frontWheel.angularVelocity + torque * vc.WHEEL_GRIP
             );
         }
     }
@@ -441,7 +487,14 @@ const config = {
         matter: {
             debug: CONFIG.PHYSICS.DEBUG,
             gravity: { y: CONFIG.PHYSICS.GRAVITY_Y },
-            enableSleeping: false
+            enableSleeping: false,
+            timing: {
+                timestamp: 0,
+                timeScale: 1
+            },
+            positionIterations: CONFIG.PHYSICS.ITERATIONS,
+            velocityIterations: CONFIG.PHYSICS.ITERATIONS,
+            constraintIterations: CONFIG.PHYSICS.ITERATIONS
         }
     },
 
