@@ -362,6 +362,20 @@ class VehicleScene extends Phaser.Scene {
         const keyboardForward = this.cursors.right.isDown;
         const keyboardReverse = this.cursors.left.isDown;
         
+        // Console log when input is detected
+        if (keyboardForward) {
+            console.log('🚗 RIGHT ARROW pressed (Forward)');
+        }
+        if (keyboardReverse) {
+            console.log('🚗 LEFT ARROW pressed (Reverse)');
+        }
+        if (this.isForward) {
+            console.log('🚗 GAS BUTTON pressed');
+        }
+        if (this.isReverse) {
+            console.log('🚗 BRAKE BUTTON pressed');
+        }
+        
         // Combine button and keyboard inputs
         const isAccelerating = this.isForward || keyboardForward;
         const isBraking = this.isReverse || keyboardReverse;
@@ -386,10 +400,14 @@ class VehicleScene extends Phaser.Scene {
         // Apply torque to REAR WHEEL ONLY (rear-wheel drive)
         if (Math.abs(this.motorPower) > 0.001) {
             const torque = this.motorPower;
+            const currentAngularVel = this.vehicle.rearWheel.angularVelocity;
+            const newAngularVel = currentAngularVel + torque * vc.WHEEL_GRIP;
+            
+            console.log(`⚙️ Applying torque: ${torque.toFixed(3)}, Angular Vel: ${currentAngularVel.toFixed(3)} → ${newAngularVel.toFixed(3)}`);
             
             this.matter.body.setAngularVelocity(
                 this.vehicle.rearWheel,
-                this.vehicle.rearWheel.angularVelocity + torque * vc.WHEEL_GRIP
+                newAngularVel
             );
         }
     }

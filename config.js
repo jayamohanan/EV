@@ -30,12 +30,12 @@ var CONFIG = {
         SPRING_LENGTH: 5,           // Matches wheel offset Y exactly (no compression at rest)
         
         // Motor properties
-        MAX_POWER: 0.15,      // Maximum torque/power
+        MAX_POWER: 0.3,       // Maximum torque/power (increased from 0.15)
         ACCELERATION: 0.05,   // How fast the motor speeds up (like Hill Climb Racing)
         DECELERATION: 0.08,   // How fast the motor slows down
         FRICTION: 0.01,
         WHEEL_FRICTION: 1.5,
-        WHEEL_GRIP: 0.003,
+        WHEEL_GRIP: 0.02,     // Increased from 0.003 for better responsiveness
         
         // Weight and physics (using direct mass, independent of sprite size)
         CHASSIS_MASS: 10,     // Direct mass value for chassis
