@@ -50,17 +50,38 @@ class VehicleScene extends Phaser.Scene {
 
     createTerrain() {
         // Draw terrain with thick visible lines and filled rectangles
+        // Ground graphics set to depth 20 to be above chassis (10) and wheels (5)
         const graphics = this.add.graphics();
+        graphics.setDepth(20);
         graphics.fillStyle(0x8B4513, 1);
         graphics.lineStyle(5, 0x654321, 1);
+        
+        // Define collision category for ground
+        const groundCategory = 0x0001;
+        
+        // Store ground bodies for reference
+        this.groundBodies = [];
         
         // Flat ground - draw filled rectangle
         graphics.fillRect(0, 870, 1200, 60);
         graphics.strokeRect(0, 870, 1200, 60);
-        this.matter.add.rectangle(600, 900, 1200, 60, {
-            isStatic: true,
-            friction: 1
-        });
+        // Physics body: top at y=870, extends downward 40px
+        // Matter.js needs volume for collision, can't use single line
+        this.groundBodies.push(
+            this.matter.add.rectangle(600, 890, 1200, 40, {
+                isStatic: true,
+                friction: 1,
+                collisionFilter: {
+                    category: groundCategory,
+                    mask: 0xFFFFFFFF  // Collide with everything
+                },
+                render: {
+                    visible: CONFIG.PHYSICS.DEBUG_GROUND_COLLIDER,
+                    lineColor: 0x00FF00,
+                    lineWidth: 2
+                }
+            })
+        );
         
         // Slope - visual
         graphics.fillStyle(0x8B4513, 1);
@@ -73,92 +94,155 @@ class VehicleScene extends Phaser.Scene {
         graphics.fillPath();
         graphics.strokePath();
         
-        // Slope physics body
-        this.matter.add.rectangle(1400, 795, 450, 60, {
-            isStatic: true,
-            friction: 1,
-            angle: -0.35
-        });
+        // Slope physics body - thick enough to prevent tunneling
+        this.groundBodies.push(
+            this.matter.add.rectangle(1400, 805, 450, 40, {
+                isStatic: true,
+                friction: 1,
+                angle: -0.35,
+                collisionFilter: {
+                    category: groundCategory,
+                    mask: 0xFFFFFFFF  // Collide with everything
+                },
+                render: {
+                    visible: CONFIG.PHYSICS.DEBUG_GROUND_COLLIDER,
+                    lineColor: 0x00FF00,
+                    lineWidth: 2
+                }
+            })
+        );
         
-        // Top platform
+        // Top platform - thick collider with top aligned to visual
         graphics.fillStyle(0x8B4513, 1);
         graphics.fillRect(1600, 720, 600, 60);
         graphics.strokeRect(1600, 720, 600, 60);
-        this.matter.add.rectangle(1900, 750, 600, 60, {
-            isStatic: true,
-            friction: 1
-        });
+        this.groundBodies.push(
+            this.matter.add.rectangle(1900, 740, 600, 40, {
+                isStatic: true,
+                friction: 1,
+                collisionFilter: {
+                    category: groundCategory,
+                    mask: 0xFFFFFFFF  // Collide with everything
+                },
+                render: {
+                    visible: CONFIG.PHYSICS.DEBUG_GROUND_COLLIDER,
+                    lineColor: 0x00FF00,
+                    lineWidth: 2
+                }
+            })
+        );
     }
 
     createVehicle() {
         const vc = CONFIG.VEHICLE;
         const x = vc.START_X;
-        const y = vc.START_Y;
+        const y = vc.SPAWN_HEIGHT;
         
-        // Create chassis
+        // Define collision categories
+        const chassisCategory = 0x0002;
+        const wheelCategory = 0x0004;
+        const groundCategory = 0x0001;
+        
+        // Create chassis (NO COLLISION with ground or wheels)
+        // Chassis weight is 10x wheel weight (density 0.01 vs 0.001)
         this.vehicle = {
             chassis: this.matter.add.rectangle(x, y, vc.CHASSIS_WIDTH, vc.CHASSIS_HEIGHT, {
-                density: 0.001,
-                friction: vc.FRICTION
+                density: 0.01 * vc.WEIGHT_MULTIPLIER,  // 10x wheel density, multiplied
+                friction: vc.FRICTION,
+                collisionFilter: {
+                    category: chassisCategory,
+                    mask: 0  // Don't collide with anything
+                },
+                render: {
+                    visible: CONFIG.PHYSICS.DEBUG_CHASSIS_COLLIDER
+                }
             }),
             
-            // Create rear wheel
+            // Create rear wheel (COLLIDES with ground only)
             rearWheel: this.matter.add.circle(
-                x - vc.WHEEL_SPACING / 2,
-                y + vc.WHEEL_OFFSET_Y,
+                x + vc.REAR_WHEEL_OFFSET_X,
+                y + vc.REAR_WHEEL_OFFSET_Y,
                 vc.WHEEL_RADIUS,
                 {
-                    density: 0.001,
-                    friction: vc.WHEEL_FRICTION
+                    density: 0.001 * vc.WEIGHT_MULTIPLIER,  // Base wheel density, multiplied
+                    friction: vc.WHEEL_FRICTION,
+                    collisionFilter: {
+                        category: wheelCategory,
+                        mask: groundCategory  // Collide with ground only
+                    },
+                    render: {
+                        visible: CONFIG.PHYSICS.DEBUG_WHEEL_COLLIDER
+                    }
                 }
             ),
             
-            // Create front wheel
+            // Create front wheel (COLLIDES with ground only)
             frontWheel: this.matter.add.circle(
-                x + vc.WHEEL_SPACING / 2,
-                y + vc.WHEEL_OFFSET_Y,
+                x + vc.FRONT_WHEEL_OFFSET_X,
+                y + vc.FRONT_WHEEL_OFFSET_Y,
                 vc.WHEEL_RADIUS,
                 {
-                    density: 0.001,
-                    friction: vc.WHEEL_FRICTION
+                    density: 0.001 * vc.WEIGHT_MULTIPLIER,  // Base wheel density, multiplied,
+                    friction: vc.WHEEL_FRICTION,
+                    collisionFilter: {
+                        category: wheelCategory,
+                        mask: groundCategory  // Collide with ground only
+                    },
+                    render: {
+                        visible: CONFIG.PHYSICS.DEBUG_WHEEL_COLLIDER
+                    }
                 }
             )
         };
         
-        // Create spring constraints (suspension)
+        // Create suspension - single spring per wheel
+        // Spring connects from wheel center (pointB: 0,0) to offset point on chassis
+        // When idle, these points should coincide
+        
+        // REAR WHEEL spring
         this.vehicle.rearSpring = this.matter.add.constraint(
             this.vehicle.chassis,
             this.vehicle.rearWheel,
             vc.SPRING_LENGTH,
             vc.SPRING_STIFFNESS,
             {
-                pointA: { x: -vc.WHEEL_SPACING / 2, y: vc.CHASSIS_HEIGHT / 2 },
-                pointB: { x: 0, y: 0 },
-                damping: vc.SPRING_DAMPING
+                pointA: { x: vc.REAR_WHEEL_OFFSET_X, y: vc.REAR_WHEEL_OFFSET_Y },  // Offset point on chassis
+                pointB: { x: 0, y: 0 },  // Center of wheel
+                damping: vc.SPRING_DAMPING,
+                render: { visible: true }  // Make visible for debugging
             }
         );
         
+        // FRONT WHEEL spring
         this.vehicle.frontSpring = this.matter.add.constraint(
             this.vehicle.chassis,
             this.vehicle.frontWheel,
             vc.SPRING_LENGTH,
             vc.SPRING_STIFFNESS,
             {
-                pointA: { x: vc.WHEEL_SPACING / 2, y: vc.CHASSIS_HEIGHT / 2 },
-                pointB: { x: 0, y: 0 },
-                damping: vc.SPRING_DAMPING
+                pointA: { x: vc.FRONT_WHEEL_OFFSET_X, y: vc.FRONT_WHEEL_OFFSET_Y },  // Offset point on chassis
+                pointB: { x: 0, y: 0 },  // Center of wheel
+                damping: vc.SPRING_DAMPING,
+                render: { visible: true }  // Make visible for debugging
             }
         );
         
-        // Create sprites for visual representation
-        this.chassisSprite = this.add.image(0, 0, 'chassis').setDepth(10);
+        // Create sprites with proper depth layering:
+        // Ground (created in terrain) = depth 20
+        // Chassis = depth 10
+        // Wheels = depth 5
         this.rearWheelSprite = this.add.image(0, 0, 'tire').setDepth(5);
         this.frontWheelSprite = this.add.image(0, 0, 'tire').setDepth(5);
+        this.chassisSprite = this.add.image(0, 0, 'chassis').setDepth(10);
         
         // Scale sprites to match physics bodies
         this.chassisSprite.setDisplaySize(vc.CHASSIS_WIDTH, vc.CHASSIS_HEIGHT);
         this.rearWheelSprite.setDisplaySize(vc.WHEEL_RADIUS * 2, vc.WHEEL_RADIUS * 2);
         this.frontWheelSprite.setDisplaySize(vc.WHEEL_RADIUS * 2, vc.WHEEL_RADIUS * 2);
+        
+        // Create debug circles for wheel offset visualization
+        this.debugCircles = this.add.graphics();
+        this.debugCircles.setDepth(100);  // Draw on top of everything
     }
 
     createControls() {
@@ -285,6 +369,51 @@ class VehicleScene extends Phaser.Scene {
             this.vehicle.frontWheel.position.y
         );
         this.frontWheelSprite.setRotation(this.vehicle.frontWheel.angle);
+        
+        // Draw debug circles for wheel offset positions
+        this.drawDebugOffsets();
+    }
+    
+    drawDebugOffsets() {
+        const vc = CONFIG.VEHICLE;
+        
+        // Clear previous debug graphics
+        this.debugCircles.clear();
+        
+        const chassis = this.vehicle.chassis;
+        const cos = Math.cos(chassis.angle);
+        const sin = Math.sin(chassis.angle);
+        
+        // Draw wheel offset circles (yellow)
+        if (vc.DEBUG_WHEEL_OFFSET) {
+            // Calculate world position of rear wheel offset point
+            const rearOffsetWorldX = chassis.position.x + 
+                (vc.REAR_WHEEL_OFFSET_X * cos - vc.REAR_WHEEL_OFFSET_Y * sin);
+            const rearOffsetWorldY = chassis.position.y + 
+                (vc.REAR_WHEEL_OFFSET_X * sin + vc.REAR_WHEEL_OFFSET_Y * cos);
+            
+            // Calculate world position of front wheel offset point
+            const frontOffsetWorldX = chassis.position.x + 
+                (vc.FRONT_WHEEL_OFFSET_X * cos - vc.FRONT_WHEEL_OFFSET_Y * sin);
+            const frontOffsetWorldY = chassis.position.y + 
+                (vc.FRONT_WHEEL_OFFSET_X * sin + vc.FRONT_WHEEL_OFFSET_Y * cos);
+            
+            this.debugCircles.fillStyle(0xFFFF00, 1);
+            this.debugCircles.fillCircle(rearOffsetWorldX, rearOffsetWorldY, 4);
+            this.debugCircles.fillCircle(frontOffsetWorldX, frontOffsetWorldY, 4);
+        }
+        
+        // Draw custom debug point (yellow circle)
+        if (vc.DEBUG_POINT_SHOW) {
+            // Calculate world position of custom debug point
+            const debugPointWorldX = chassis.position.x + 
+                (vc.DEBUG_POINT_OFFSET_X * cos - vc.DEBUG_POINT_OFFSET_Y * sin);
+            const debugPointWorldY = chassis.position.y + 
+                (vc.DEBUG_POINT_OFFSET_X * sin + vc.DEBUG_POINT_OFFSET_Y * cos);
+            
+            this.debugCircles.fillStyle(0xFFFF00, 1);
+            this.debugCircles.fillCircle(debugPointWorldX, debugPointWorldY, 4);
+        }
     }
 
     updateDebugText() {

@@ -7,16 +7,26 @@ var CONFIG = {
     
     // Vehicle Physics Config
     VEHICLE: {
-        CHASSIS_WIDTH: 100,
-        CHASSIS_HEIGHT: 50,
+        CHASSIS_WIDTH: 120,
+        CHASSIS_HEIGHT: 60,
         WHEEL_RADIUS: 20,
-        WHEEL_OFFSET_Y: 20,  // Distance from chassis center to wheel center
-        WHEEL_SPACING: 70,   // Distance between front and rear wheels
+        REAR_WHEEL_OFFSET_X: -38,  // Horizontal offset for rear wheel from chassis center
+        REAR_WHEEL_OFFSET_Y: 25,   // Vertical offset for rear wheel from chassis center (positive = down)
+        FRONT_WHEEL_OFFSET_X: 38,  // Horizontal offset for front wheel from chassis center
+        FRONT_WHEEL_OFFSET_Y: 25,  // Vertical offset for front wheel from chassis center (positive = down)
+        
+        // Debug visualization
+        DEBUG_WHEEL_OFFSET: false,  // Show yellow circles at wheel offset positions
+        
+        // Custom debug offset point (for checking relative positions)
+        DEBUG_POINT_SHOW: true,    // Show/hide the custom debug point
+        DEBUG_POINT_OFFSET_X: -38,   // X offset from chassis center
+        DEBUG_POINT_OFFSET_Y: 25,   // Y offset from chassis center (positive = down)
         
         // Spring/Suspension properties
-        SPRING_STIFFNESS: 0.06,
-        SPRING_DAMPING: 0.01,
-        SPRING_LENGTH: 30,
+        SPRING_STIFFNESS: 0.5,//0.08
+        SPRING_DAMPING: 0.03,
+        SPRING_LENGTH: 5,
         
         // Motor properties
         MAX_POWER: 0.15,      // Maximum torque/power
@@ -24,15 +34,23 @@ var CONFIG = {
         WHEEL_FRICTION: 1.5,
         WHEEL_GRIP: 0.003,
         
+        // Weight and physics
+        WEIGHT_MULTIPLIER: 0.5,  // Multiplier for chassis and wheel density
+        
         // Starting position
         START_X: 200,
-        START_Y: 300,
+        SPAWN_HEIGHT: 700,     // Height at which vehicle spawns and falls
     },
     
     // Physics world settings
     PHYSICS: {
         GRAVITY_Y: 1.2,
         DEBUG: true,  // Show physics debug rendering
+        
+        // Individual collider visibility (only works when DEBUG is true)
+        DEBUG_CHASSIS_COLLIDER: true,   // Show/hide chassis collider outline
+        DEBUG_WHEEL_COLLIDER: true,      // Show/hide wheel collider outlines
+        DEBUG_GROUND_COLLIDER: true,    // Show/hide ground collider outlines
     },
     
     // Color palette (kept for potential future use)
