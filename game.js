@@ -237,7 +237,7 @@ class VehicleScene extends Phaser.Scene {
             vc.SPRING_LENGTH,
             vc.SPRING_STIFFNESS,
             {
-                pointA: { x: vc.REAR_WHEEL_OFFSET_X, y: vc.REAR_WHEEL_OFFSET_Y },  // Offset point on chassis
+                pointA: { x: vc.REAR_WHEEL_OFFSET_X, y: vc.REAR_WHEEL_OFFSET_Y - vc.SPRING_LENGTH },  // Offset point on chassis
                 pointB: { x: 0, y: 0 },  // Center of wheel
                 damping: vc.SPRING_DAMPING,
                 render: { visible: true }  // Make visible for debugging
@@ -251,7 +251,7 @@ class VehicleScene extends Phaser.Scene {
             vc.SPRING_LENGTH,
             vc.SPRING_STIFFNESS,
             {
-                pointA: { x: vc.FRONT_WHEEL_OFFSET_X, y: vc.FRONT_WHEEL_OFFSET_Y },  // Offset point on chassis
+                pointA: { x: vc.FRONT_WHEEL_OFFSET_X, y: vc.FRONT_WHEEL_OFFSET_Y - vc.SPRING_LENGTH },  // Offset point on chassis
                 pointB: { x: 0, y: 0 },  // Center of wheel
                 damping: vc.SPRING_DAMPING,
                 render: { visible: true }  // Make visible for debugging

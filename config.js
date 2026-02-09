@@ -25,21 +25,21 @@ var CONFIG = {
         DEBUG_POINT_OFFSET_Y: 25,   // Y offset from chassis center (positive = down)
         
         // Spring/Suspension properties
-        SPRING_STIFFNESS: 1,       // Much higher stiffness prevents compression/sinking
+        SPRING_STIFFNESS: 0.1,       // Much higher stiffness prevents compression/sinking
         SPRING_DAMPING: 0.1,         // Damping to reduce bounce
-        SPRING_LENGTH: 0,           // Matches wheel offset Y exactly (no compression at rest)
+        SPRING_LENGTH: 5,           // Matches wheel offset Y exactly (no compression at rest)
         
         // Motor properties
         MAX_POWER: 0.3,       // Maximum torque/power (increased from 0.15)
         ACCELERATION: 0.05,   // How fast the motor speeds up (like Hill Climb Racing)
         DECELERATION: 0.08,   // How fast the motor slows down
         FRICTION: 0.01,
-        WHEEL_FRICTION: 0.5,
+        WHEEL_FRICTION: 0.1,
         WHEEL_GRIP: 0.02,     // Increased from 0.003 for better responsiveness
         
         // Weight and physics (using direct mass, independent of sprite size)
-        CHASSIS_MASS: 10,     // Direct mass value for chassis
-        WHEEL_MASS: 1,        // Direct mass value for each wheel
+        CHASSIS_MASS: 5,     // Direct mass value for chassis
+        WHEEL_MASS: 2,        // Direct mass value for each wheel
         
         // Starting position
         START_X: 200,
@@ -72,7 +72,7 @@ var CONFIG = {
     
     // Physics world settings
     PHYSICS: {
-        GRAVITY_Y: 0.5,
+        GRAVITY_Y: 1,
         DEBUG: true,  // Show physics debug rendering
         
         // Physics engine timing (to prevent tunneling)
@@ -81,8 +81,8 @@ var CONFIG = {
         ITERATIONS: 10,       // Constraint solver iterations (higher = more accurate but slower)
         
         // Individual collider visibility (only works when DEBUG is true)
-        DEBUG_CHASSIS_COLLIDER: true,   // Show/hide chassis collider outline
-        DEBUG_WHEEL_COLLIDER: true,      // Show/hide wheel collider outlines
-        DEBUG_GROUND_COLLIDER: true,    // Show/hide ground collider outlines
+        DEBUG_CHASSIS_COLLIDER: false,   // Show/hide chassis collider outline
+        DEBUG_WHEEL_COLLIDER: false,      // Show/hide wheel collider outlines
+        DEBUG_GROUND_COLLIDER: false,    // Show/hide ground collider outlines
     }
 };
