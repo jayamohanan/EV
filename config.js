@@ -24,16 +24,21 @@ var CONFIG = {
         DEBUG_POINT_OFFSET_X: -38,   // X offset from chassis center
         DEBUG_POINT_OFFSET_Y: 25,   // Y offset from chassis center (positive = down)
         
-        // Spring/Suspension properties
-        SPRING_STIFFNESS: 0.1,       // Much higher stiffness prevents compression/sinking
+        // Spring/Suspension properties (vertical)
+        SPRING_STIFFNESS: 0.2,       // Much higher stiffness prevents compression/sinking
         SPRING_DAMPING: 0.1,         // Damping to reduce bounce
-        SPRING_LENGTH: 5,           // Matches wheel offset Y exactly (no compression at rest)
+        SPRING_LENGTH: 0.001,           // Matches wheel offset Y exactly (no compression at rest)
+        
+        // Horizontal constraint properties (prevents pendulum swing)
+        HORIZONTAL_CONSTRAINT_LENGTH: 2,      // Very small rest length for slight flex during acceleration
+        HORIZONTAL_CONSTRAINT_STIFFNESS: 0.8, // High stiffness to keep chassis aligned, but allows tiny movement
+        HORIZONTAL_CONSTRAINT_DAMPING: 0.5,   // High damping to prevent oscillation
         
         // Motor properties
-        MAX_POWER: 0.3,       // Maximum torque/power (increased from 0.15)
-        ACCELERATION: 0.05,   // How fast the motor speeds up (like Hill Climb Racing)
-        DECELERATION: 0.08,   // How fast the motor slows down
-        FRICTION: 0.01,
+        MAX_POWER: 10,       // Maximum torque/power (increased from 0.15)
+        ACCELERATION: 0.1,   // How fast the motor speeds up (like Hill Climb Racing)
+        DECELERATION: 1.2,   // How fast the motor slows down
+        FRICTION: 0.9,
         WHEEL_FRICTION: 0.1,
         WHEEL_GRIP: 0.02,     // Increased from 0.003 for better responsiveness
         
