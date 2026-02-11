@@ -24,27 +24,28 @@ var CONFIG = {
         DEBUG_POINT_OFFSET_X: -38,   // X offset from chassis center
         DEBUG_POINT_OFFSET_Y: 25,   // Y offset from chassis center (positive = down)
         
-        // Spring/Suspension properties (vertical)
-        SPRING_STIFFNESS: 0.2,       // Much higher stiffness prevents compression/sinking
-        SPRING_DAMPING: 0.1,         // Damping to reduce bounce
-        SPRING_LENGTH: 0.001,           // Matches wheel offset Y exactly (no compression at rest)
+        // Constraint properties (rigid axles with slight compliance)
+        SPRING_STIFFNESS: 0.2,       // Constraint compliance (like car.ts example)
+        SPRING_DAMPING: 0,           // No damping for rigid constraint
+        SPRING_LENGTH: 0,            // Zero length = rigid constraint (not a spring)
         
         // Horizontal constraint properties (prevents pendulum swing)
         HORIZONTAL_CONSTRAINT_LENGTH: 2,      // Very small rest length for slight flex during acceleration
         HORIZONTAL_CONSTRAINT_STIFFNESS: 0.8, // High stiffness to keep chassis aligned, but allows tiny movement
         HORIZONTAL_CONSTRAINT_DAMPING: 0.5,   // High damping to prevent oscillation
         
-        // Motor properties
-        MAX_POWER: 10,       // Maximum torque/power (increased from 0.15)
-        ACCELERATION: 0.1,   // How fast the motor speeds up (like Hill Climb Racing)
-        DECELERATION: 1.2,   // How fast the motor slows down
+        // Motor properties (matching car.ts example)
+        MAX_SPEED: 0.75,              // Maximum angular velocity
+        MAX_SPEED_BACKWARDS: 0.5625,  // 75% of forward speed
+        ACCELERATION: 0.0058,         // MAX_SPEED / 130 (gradual ramp)
+        ACCELERATION_BACKWARDS: 0.0043, // 75% of forward acceleration
         FRICTION: 0.9,
-        WHEEL_FRICTION: 0.1,
-        WHEEL_GRIP: 0.02,     // Increased from 0.003 for better responsiveness
+        WHEEL_FRICTION: 0.9,          // Match car.ts example
+        WHEEL_GRIP: 0.02,
         
-        // Weight and physics (using direct mass, independent of sprite size)
-        CHASSIS_MASS: 5,     // Direct mass value for chassis
-        WHEEL_MASS: 2,        // Direct mass value for each wheel
+        // Weight and physics (matching car.ts example with density)
+        CHASSIS_DENSITY: 0.002,     // Chassis density (car.ts example)
+        WHEEL_DENSITY: 0.001,       // Wheel density (car.ts example)
         
         // Starting position
         START_X: 200,

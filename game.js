@@ -6,14 +6,8 @@
 
         init() {
             this.vehicle = null;
-            this.motorPower = 0;
             this.isForward = false;
             this.isReverse = false;
-            
-            // Define collision categories for use across all physics bodies
-            this.CATEGORY_GROUND = 0x0001;
-            this.CATEGORY_CHASSIS = 0x0002;
-            this.CATEGORY_WHEEL = 0x0004;
         }
 
         preload() {
@@ -85,10 +79,6 @@
                         isStatic: true,
                         friction: 1,
                         restitution: 0,  // No bounce
-                        collisionFilter: {
-                            category: this.CATEGORY_GROUND,
-                            mask: 0xFFFFFFFF  // Collide with everything
-                        },
                         render: {
                             visible: CONFIG.PHYSICS.DEBUG_GROUND_COLLIDER,
                             lineColor: 0x00FF00,
@@ -123,10 +113,6 @@
                         friction: 1,
                         restitution: 0,  // No bounce
                         angle: tc.SLOPE_ANGLE,
-                        collisionFilter: {
-                            category: this.CATEGORY_GROUND,
-                            mask: 0xFFFFFFFF  // Collide with everything
-                        },
                         render: {
                             visible: CONFIG.PHYSICS.DEBUG_GROUND_COLLIDER,
                             lineColor: 0x00FF00,
@@ -153,10 +139,6 @@
                         isStatic: true,
                         friction: 1,
                         restitution: 0,  // No bounce
-                        collisionFilter: {
-                            category: this.CATEGORY_GROUND,
-                            mask: 0xFFFFFFFF  // Collide with everything
-                        },
                         render: {
                             visible: CONFIG.PHYSICS.DEBUG_GROUND_COLLIDER,
                             lineColor: 0x00FF00,
@@ -172,15 +154,17 @@
             const x = vc.START_X;
             const y = vc.SPAWN_HEIGHT;
             
+            // Create collision group for vehicle (like car.ts example)
+            const vehicleGroup = this.matter.world.nextGroup(true);
+            
             // Create chassis (NO COLLISION with ground or wheels)
-            // Using direct mass instead of density (mass doesn't change with sprite size)
             this.vehicle = {
                 chassis: this.matter.add.rectangle(x, y, vc.CHASSIS_WIDTH, vc.CHASSIS_HEIGHT, {
-                    mass: vc.CHASSIS_MASS,  // Direct mass value
+                    density: vc.CHASSIS_DENSITY,  // Use density like car.ts example
                     friction: vc.FRICTION,
+                    chamfer: { radius: vc.CHASSIS_HEIGHT * 0.5 },  // Rounded corners like car.ts
                     collisionFilter: {
-                        category: this.CATEGORY_CHASSIS,
-                        mask: 0  // Don't collide with anything
+                        group: vehicleGroup  // Use collision group
                     },
                     render: {
                         visible: CONFIG.PHYSICS.DEBUG_CHASSIS_COLLIDER
@@ -193,12 +177,11 @@
                     y + vc.REAR_WHEEL_OFFSET_Y,
                     vc.WHEEL_RADIUS,
                     {
-                        mass: vc.WHEEL_MASS,  // Direct mass value
+                        density: vc.WHEEL_DENSITY,  // Use density like car.ts example
                         friction: vc.WHEEL_FRICTION,
                         restitution: 0,  // No bounce
                         collisionFilter: {
-                            category: this.CATEGORY_WHEEL,
-                            mask: this.CATEGORY_GROUND  // Collide with ground only
+                            group: vehicleGroup  // Use collision group
                         },
                         render: {
                             visible: CONFIG.PHYSICS.DEBUG_WHEEL_COLLIDER
@@ -212,12 +195,11 @@
                     y + vc.FRONT_WHEEL_OFFSET_Y,
                     vc.WHEEL_RADIUS,
                     {
-                        mass: vc.WHEEL_MASS,  // Direct mass value
+                        density: vc.WHEEL_DENSITY,  // Use density like car.ts example
                         friction: vc.WHEEL_FRICTION,
                         restitution: 0,  // No bounce
                         collisionFilter: {
-                            category: this.CATEGORY_WHEEL,
-                            mask: this.CATEGORY_GROUND  // Collide with ground only
+                            group: vehicleGroup  // Use collision group
                         },
                         render: {
                             visible: CONFIG.PHYSICS.DEBUG_WHEEL_COLLIDER
@@ -226,65 +208,35 @@
                 )
             };
             
-            // Create suspension - single spring per wheel
-            // Spring connects from wheel center (pointB: 0,0) to offset point on chassis
-            // When idle, these points should coincide
+            // Create rigid axle constraints (like car.ts example)
+            // Rigid constraint (length=0, stiffness=0.2) connects wheel to chassis offset point
+            // This prevents bouncing while allowing slight compliance
             
-            // REAR WHEEL spring (vertical suspension)
+            // REAR WHEEL axle (rigid constraint)
             this.vehicle.rearSpring = this.matter.add.constraint(
                 this.vehicle.chassis,
                 this.vehicle.rearWheel,
-                vc.SPRING_LENGTH,
-                vc.SPRING_STIFFNESS,
+                vc.SPRING_LENGTH,  // 0 = rigid constraint
+                vc.SPRING_STIFFNESS,  // 0.2 = slight compliance
                 {
-                    pointA: { x: vc.REAR_WHEEL_OFFSET_X, y: vc.REAR_WHEEL_OFFSET_Y - vc.SPRING_LENGTH },  // Offset point on chassis
+                    pointA: { x: vc.REAR_WHEEL_OFFSET_X, y: vc.REAR_WHEEL_OFFSET_Y },  // Exact offset point on chassis
                     pointB: { x: 0, y: 0 },  // Center of wheel
-                    damping: vc.SPRING_DAMPING,
                     render: { visible: true }  // Make visible for debugging
                 }
             );
             
-            // REAR WHEEL horizontal constraint (prevents pendulum swing, allows small flex)
-            // this.vehicle.rearHorizontalConstraint = this.matter.add.constraint(
-            //     this.vehicle.chassis,
-            //     this.vehicle.rearWheel,
-            //     vc.HORIZONTAL_CONSTRAINT_LENGTH,
-            //     vc.HORIZONTAL_CONSTRAINT_STIFFNESS,
-            //     {
-            //         pointA: { x: vc.REAR_WHEEL_OFFSET_X, y: vc.REAR_WHEEL_OFFSET_Y - vc.HORIZONTAL_CONSTRAINT_LENGTH },  // Horizontal offset point on chassis
-            //         pointB: { x: 0, y: 0 },  // Center of wheel
-            //         damping: vc.HORIZONTAL_CONSTRAINT_DAMPING,
-            //         render: { visible: true, lineColor: 0xFF0000 }  // Red line for horizontal constraint
-            //     }
-            // );
-            
-            // FRONT WHEEL spring (vertical suspension)
+            // FRONT WHEEL axle (rigid constraint)
             this.vehicle.frontSpring = this.matter.add.constraint(
                 this.vehicle.chassis,
                 this.vehicle.frontWheel,
-                vc.SPRING_LENGTH,
-                vc.SPRING_STIFFNESS,
+                vc.SPRING_LENGTH,  // 0 = rigid constraint
+                vc.SPRING_STIFFNESS,  // 0.2 = slight compliance
                 {
-                    pointA: { x: vc.FRONT_WHEEL_OFFSET_X, y: vc.FRONT_WHEEL_OFFSET_Y - vc.SPRING_LENGTH },  // Offset point on chassis
+                    pointA: { x: vc.FRONT_WHEEL_OFFSET_X, y: vc.FRONT_WHEEL_OFFSET_Y },  // Exact offset point on chassis
                     pointB: { x: 0, y: 0 },  // Center of wheel
-                    damping: vc.SPRING_DAMPING,
                     render: { visible: true }  // Make visible for debugging
                 }
             );
-            
-            // FRONT WHEEL horizontal constraint (prevents pendulum swing, allows small flex)
-            // this.vehicle.frontHorizontalConstraint = this.matter.add.constraint(
-            //     this.vehicle.chassis,
-            //     this.vehicle.frontWheel,
-            //     vc.HORIZONTAL_CONSTRAINT_LENGTH,
-            //     vc.HORIZONTAL_CONSTRAINT_STIFFNESS,
-            //     {
-            //         pointA: { x: vc.FRONT_WHEEL_OFFSET_X, y: vc.FRONT_WHEEL_OFFSET_Y - vc.HORIZONTAL_CONSTRAINT_LENGTH },  // Horizontal offset point on chassis
-            //         pointB: { x: 0, y: 0 },  // Center of wheel
-            //         damping: vc.HORIZONTAL_CONSTRAINT_DAMPING,
-            //         render: { visible: true, lineColor: 0xFF0000 }  // Red line for horizontal constraint
-            //     }
-            // );
             
             // Create sprites with proper depth layering:
             // Ground (created in terrain) = depth 20
@@ -390,53 +342,33 @@
             const keyboardForward = this.cursors.right.isDown;
             const keyboardReverse = this.cursors.left.isDown;
             
-            // Console log when input is detected
-            if (keyboardForward) {
-                console.log('🚗 RIGHT ARROW pressed (Forward)');
-            }
-            if (keyboardReverse) {
-                console.log('🚗 LEFT ARROW pressed (Reverse)');
-            }
-            if (this.isForward) {
-                console.log('🚗 GAS BUTTON pressed');
-            }
-            if (this.isReverse) {
-                console.log('🚗 BRAKE BUTTON pressed');
-            }
-            
             // Combine button and keyboard inputs
             const isAccelerating = this.isForward || keyboardForward;
             const isBraking = this.isReverse || keyboardReverse;
             
-            // Determine target power
-            let targetPower = 0;
+            // Get current wheel angular velocity
+            const rearWheel = this.vehicle.rearWheel;
+            const frontWheel = this.vehicle.frontWheel;
+            
+            // Apply angular velocity directly (car.ts approach)
             if (isAccelerating) {
-                targetPower = vc.MAX_POWER;
+                // Forward acceleration with gradual ramp
+                let newSpeed = rearWheel.angularSpeed <= 0 
+                    ? vc.MAX_SPEED / 10 
+                    : rearWheel.angularSpeed + vc.ACCELERATION;
+                if (newSpeed > vc.MAX_SPEED) newSpeed = vc.MAX_SPEED;
+                
+                this.matter.body.setAngularVelocity(rearWheel, newSpeed);
+                this.matter.body.setAngularVelocity(frontWheel, newSpeed);
             } else if (isBraking) {
-                targetPower = -vc.MAX_POWER;
-            }
-            
-            // Gradual acceleration/deceleration (Hill Climb Racing style)
-            if (targetPower !== 0) {
-                // Accelerating - smooth ramp up
-                this.motorPower = Phaser.Math.Linear(this.motorPower, targetPower, vc.ACCELERATION);
-            } else {
-                // Decelerating - smooth ramp down
-                this.motorPower = Phaser.Math.Linear(this.motorPower, 0, vc.DECELERATION);
-            }
-            
-            // Apply torque to REAR WHEEL ONLY (rear-wheel drive)
-            if (Math.abs(this.motorPower) > 0.001) {
-                const torque = this.motorPower;
-                const currentAngularVel = this.vehicle.rearWheel.angularVelocity;
-                const newAngularVel = currentAngularVel + torque * vc.WHEEL_GRIP;
+                // Reverse with gradual ramp
+                let newSpeed = rearWheel.angularSpeed >= 0
+                    ? -vc.MAX_SPEED_BACKWARDS / 10
+                    : rearWheel.angularSpeed - vc.ACCELERATION_BACKWARDS;
+                if (newSpeed < -vc.MAX_SPEED_BACKWARDS) newSpeed = -vc.MAX_SPEED_BACKWARDS;
                 
-                console.log(`⚙️ Applying torque: ${torque.toFixed(3)}, Angular Vel: ${currentAngularVel.toFixed(3)} → ${newAngularVel.toFixed(3)}`);
-                
-                this.matter.body.setAngularVelocity(
-                    this.vehicle.rearWheel,
-                    newAngularVel
-                );
+                this.matter.body.setAngularVelocity(rearWheel, newSpeed);
+                this.matter.body.setAngularVelocity(frontWheel, newSpeed);
             }
         }
 
@@ -512,12 +444,13 @@
             const chassis = this.vehicle.chassis;
             const speed = Math.sqrt(chassis.velocity.x ** 2 + chassis.velocity.y ** 2).toFixed(1);
             const angle = (chassis.angle * 180 / Math.PI).toFixed(1);
+            const wheelSpeed = this.vehicle.rearWheel.angularSpeed.toFixed(2);
             
             this.debugText.setText([
                 `Position: ${chassis.position.x.toFixed(0)}, ${chassis.position.y.toFixed(0)}`,
                 `Speed: ${speed}`,
                 `Angle: ${angle}°`,
-                `Power: ${(this.motorPower * 100).toFixed(1)}%`
+                `Wheel Speed: ${wheelSpeed}`
             ]);
         }
     }
