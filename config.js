@@ -34,13 +34,14 @@ var CONFIG = {
         HORIZONTAL_CONSTRAINT_STIFFNESS: 0.8, // High stiffness to keep chassis aligned, but allows tiny movement
         HORIZONTAL_CONSTRAINT_DAMPING: 0.5,   // High damping to prevent oscillation
         
-        // Motor properties (matching car.ts example)
-        MAX_SPEED: 0.75,              // Maximum angular velocity
-        MAX_SPEED_BACKWARDS: 0.5625,  // 75% of forward speed
-        ACCELERATION: 0.0058,         // MAX_SPEED / 130 (gradual ramp)
-        ACCELERATION_BACKWARDS: 0.0043, // 75% of forward acceleration
+        // Motor properties (scaled for 15px wheels vs 50px reference)
+        // Wheel ratio: 50/15 = 3.33, so speeds are scaled up
+        MAX_SPEED: 5,               // 0.75 * 3.33 for smaller wheels
+        MAX_SPEED_BACKWARDS: 3,   // 75% of forward speed
+        ACCELERATION: 0.06,          // (2.5 / 130) gradual ramp
+        ACCELERATION_BACKWARDS: 0.04, // 75% of forward acceleration
         FRICTION: 0.9,
-        WHEEL_FRICTION: 0.9,          // Match car.ts example
+        WHEEL_FRICTION: 0.9,          // High friction for grip
         WHEEL_GRIP: 0.02,
         
         // Weight and physics (matching car.ts example with density)

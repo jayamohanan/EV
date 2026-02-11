@@ -77,7 +77,7 @@
                     groundHeight,
                     {
                         isStatic: true,
-                        friction: 1,
+                        friction: 0.8,  // Match car.ts terrain friction
                         restitution: 0,  // No bounce
                         render: {
                             visible: CONFIG.PHYSICS.DEBUG_GROUND_COLLIDER,
@@ -110,7 +110,7 @@
                     slopeHeight,
                     {
                         isStatic: true,
-                        friction: 1,
+                        friction: 0.8,  // Match car.ts terrain friction
                         restitution: 0,  // No bounce
                         angle: tc.SLOPE_ANGLE,
                         render: {
@@ -137,7 +137,7 @@
                     platformHeight,
                     {
                         isStatic: true,
-                        friction: 1,
+                        friction: 0.8,  // Match car.ts terrain friction
                         restitution: 0,  // No bounce
                         render: {
                             visible: CONFIG.PHYSICS.DEBUG_GROUND_COLLIDER,
