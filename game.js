@@ -8,12 +8,23 @@
             this.vehicle = null;
             this.isForward = false;
             this.isReverse = false;
+            
+            // Engine sound properties
+            this.engineSound = null;
+            this.isEngineRunning = false;
+            this.currentPlaybackRate = CONFIG.AUDIO.ENGINE_IDLE_RATE;
+            this.targetPlaybackRate = CONFIG.AUDIO.ENGINE_IDLE_RATE;
+            this.currentVolume = CONFIG.AUDIO.ENGINE_IDLE_VOLUME;
+            this.targetVolume = CONFIG.AUDIO.ENGINE_IDLE_VOLUME;
         }
 
         preload() {
             // Load vehicle assets
             this.load.image('chassis', 'graphics/chassis.png');
             this.load.image('tire', 'graphics/tire.png');
+            
+            // Load engine sound
+            this.load.audio('car_idle', 'sounds/car_idle.wav');
         }
 
         create() {
@@ -48,6 +59,9 @@
                 backgroundColor: '#ffffff88',
                 padding: { x: 10, y: 10 }
             }).setScrollFactor(0).setDepth(1000);
+            
+            // Setup engine sound
+            this.setupEngineSound();
         }
 
         createTerrain() {
@@ -322,11 +336,112 @@
             });
         }
 
+        setupEngineSound() {
+            // Create looping engine sound
+            this.engineSound = this.sound.add('car_idle', {
+                loop: true,
+                volume: CONFIG.AUDIO.ENGINE_IDLE_VOLUME,
+                rate: CONFIG.AUDIO.ENGINE_IDLE_RATE
+            });
+        }
+
+        startEngine() {
+            if (!this.isEngineRunning && this.engineSound) {
+                this.engineSound.play();
+                this.isEngineRunning = true;
+                this.currentPlaybackRate = CONFIG.AUDIO.ENGINE_IDLE_RATE;
+                this.currentVolume = CONFIG.AUDIO.ENGINE_IDLE_VOLUME;
+            }
+        }
+
+        stopEngine() {
+            if (this.isEngineRunning && this.engineSound) {
+                this.engineSound.stop();
+                this.isEngineRunning = false;
+            }
+        }
+
+        updateEngineSound() {
+            if (!this.isEngineRunning || !this.engineSound) return;
+
+            const vc = CONFIG.VEHICLE;
+            const ac = CONFIG.AUDIO;
+            
+            // Check keyboard and button input
+            const isAccelerating = this.isForward || this.cursors.right.isDown;
+            const isBraking = this.isReverse || this.cursors.left.isDown;
+            
+            // Get current wheel speed (absolute value for pitch calculation)
+            const wheelSpeed = Math.abs(this.vehicle.rearWheel.angularSpeed);
+            const maxSpeed = vc.MAX_SPEED;
+            
+            // Calculate speed ratio (0 to 1)
+            const speedRatio = Math.min(wheelSpeed / maxSpeed, 1.0);
+
+            if (isAccelerating) {
+                // Forward acceleration - increase pitch and volume
+                this.targetPlaybackRate = Phaser.Math.Linear(
+                    ac.ENGINE_IDLE_RATE,
+                    ac.ENGINE_MAX_RATE,
+                    speedRatio
+                );
+                this.targetVolume = ac.ENGINE_ACTIVE_VOLUME;
+                
+            } else if (isBraking) {
+                // Reverse - lower pitch, moderate volume
+                this.targetPlaybackRate = Phaser.Math.Linear(
+                    ac.ENGINE_IDLE_RATE,
+                    ac.ENGINE_REVERSE_RATE,
+                    speedRatio
+                );
+                this.targetVolume = ac.ENGINE_ACTIVE_VOLUME * 0.8;
+                
+            } else {
+                // Idle/coasting - smooth back to idle with speed-based pitch
+                const coastingRate = Phaser.Math.Linear(
+                    ac.ENGINE_IDLE_RATE,
+                    ac.ENGINE_MAX_RATE * 0.6,
+                    speedRatio * 0.5  // Reduced influence when coasting
+                );
+                this.targetPlaybackRate = coastingRate;
+                this.targetVolume = ac.ENGINE_IDLE_VOLUME + (speedRatio * 0.2);
+            }
+
+            // Smooth interpolation (lerp) for natural sound transitions
+            this.currentPlaybackRate = Phaser.Math.Linear(
+                this.currentPlaybackRate,
+                this.targetPlaybackRate,
+                ac.RATE_LERP_SPEED
+            );
+            
+            this.currentVolume = Phaser.Math.Linear(
+                this.currentVolume,
+                this.targetVolume,
+                ac.VOLUME_LERP_SPEED
+            );
+
+            // Apply the smoothed values to the sound
+            if (this.engineSound.isPlaying) {
+                this.engineSound.setRate(this.currentPlaybackRate);
+                this.engineSound.setVolume(this.currentVolume);
+            }
+        }
+
         update() {
             if (!this.vehicle) return;
             
+            // Start engine on first input
+            const hasInput = this.isForward || this.isReverse || 
+                           this.cursors.right.isDown || this.cursors.left.isDown;
+            if (!this.isEngineRunning && hasInput) {
+                this.startEngine();
+            }
+            
             // Apply motor power
             this.applyMotorPower();
+            
+            // Update engine sound
+            this.updateEngineSound();
             
             // Update sprite positions
             this.updateVehicleGraphics();

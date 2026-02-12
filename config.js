@@ -91,5 +91,16 @@ var CONFIG = {
         DEBUG_CHASSIS_COLLIDER: false,   // Show/hide chassis collider outline
         DEBUG_WHEEL_COLLIDER: false,      // Show/hide wheel collider outlines
         DEBUG_GROUND_COLLIDER: false,    // Show/hide ground collider outlines
+    },
+    
+    // Audio settings (Hill Climb Racing style engine sound)
+    AUDIO: {
+        ENGINE_IDLE_RATE: 0.8,         // Playback rate when idle (lower = deeper sound)
+        ENGINE_MAX_RATE: 2.2,          // Playback rate at max speed (higher = screaming engine)
+        ENGINE_REVERSE_RATE: 0.6,      // Playback rate when reversing (lower = deeper)
+        ENGINE_IDLE_VOLUME: 0.4,       // Volume when idle (0-1)
+        ENGINE_ACTIVE_VOLUME: 0.8,     // Volume when accelerating (0-1)
+        RATE_LERP_SPEED: 0.08,         // How fast pitch changes (0.01=slow, 0.2=instant)
+        VOLUME_LERP_SPEED: 0.15,       // How fast volume changes (0.01=slow, 0.2=instant)
     }
 };
