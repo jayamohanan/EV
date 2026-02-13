@@ -14,8 +14,10 @@ class MergeScene extends Phaser.Scene {
         this.spawnButtonLevel = 1;
         this.spawnCost = 10;
         this.highestBatteryLevel = 1;
-        this.levelUpAvailable = false;
         this.levelUpTimer = null;
+        this.levelUpButtonVisible = false;
+        this.levelUpButtonShowTime = null;
+        this.firstLevelUpTimer = true;
         
         // Grid layout constants
         this.GRID_START_Y = 100;
@@ -28,6 +30,7 @@ class MergeScene extends Phaser.Scene {
 
     preload() {
         this.load.image('battery', 'graphics/battery.png');
+        this.load.image('coin', 'graphics/coin.png');
     }
 
     create() {
@@ -42,14 +45,6 @@ class MergeScene extends Phaser.Scene {
         const gridWidth = this.GRID_COLS * this.CELL_SIZE + (this.GRID_COLS - 1) * this.CELL_GAP;
         const gridHeight = this.GRID_ROWS * this.CELL_SIZE + (this.GRID_ROWS - 1) * this.CELL_GAP;
         this.gridStartX = (sceneWidth - gridWidth) / 2 + this.CELL_SIZE / 2;
-        
-        // Add title
-        this.add.text(sceneWidth / 2, 30, 'BATTERY LAB', {
-            fontSize: '28px',
-            fontFamily: CONFIG.FONT_FAMILY,
-            color: '#2C5F8D',
-            fontStyle: 'bold'
-        }).setOrigin(0.5);
         
         // Create coin display
         this.createCoinDisplay();
@@ -79,7 +74,10 @@ class MergeScene extends Phaser.Scene {
         const coinBg = this.add.rectangle(sceneWidth - 100, 75, 160, 50, 0xFFD700, 1);
         coinBg.setStrokeStyle(3, 0xFFA500);
         
-        this.coinText = this.add.text(sceneWidth - 100, 75, `💰 ${this.coins}`, {
+        // Coin icon
+        const coinIcon = this.add.image(sceneWidth - 140, 75, 'coin').setScale(0.15);
+        
+        this.coinText = this.add.text(sceneWidth - 80, 75, `${this.coins}`, {
             fontSize: '24px',
             fontFamily: CONFIG.FONT_FAMILY,
             color: '#000000',
@@ -147,14 +145,17 @@ class MergeScene extends Phaser.Scene {
         // Battery icon on button
         const spawnIcon = this.add.image(-60, 0, 'battery').setScale(0.4);
         
-        this.spawnButtonText = this.add.text(15, 0, `10 💰`, {
+        this.spawnButtonText = this.add.text(15, 0, `10`, {
             fontSize: '24px',
             fontFamily: CONFIG.FONT_FAMILY,
             color: '#FFFFFF',
             fontStyle: 'bold'
         }).setOrigin(0.5);
         
-        spawnButton.add([spawnBg, spawnIcon, this.spawnButtonText]);
+        // Coin icon on button
+        const spawnCoinIcon = this.add.image(40, 0, 'coin').setScale(0.12);
+        
+        spawnButton.add([spawnBg, spawnIcon, this.spawnButtonText, spawnCoinIcon]);
         
         spawnBg.on('pointerdown', () => {
             this.spawnBattery();
@@ -169,7 +170,6 @@ class MergeScene extends Phaser.Scene {
         const levelUpBg = this.add.rectangle(0, 0, 180, 70, 0xFF9800);
         levelUpBg.setStrokeStyle(4, 0xE65100);
         levelUpBg.setInteractive({ useHandCursor: true });
-        levelUpBg.setAlpha(0.5); // Initially disabled
         
         const levelUpText = this.add.text(0, 0, '📺 Level Up\nAll', {
             fontSize: '18px',
@@ -182,7 +182,7 @@ class MergeScene extends Phaser.Scene {
         levelUpButton.add([levelUpBg, levelUpText]);
         
         levelUpBg.on('pointerdown', () => {
-            if (this.levelUpAvailable) {
+            if (this.levelUpButtonVisible) {
                 this.levelUpAll();
             }
         });
@@ -190,7 +190,12 @@ class MergeScene extends Phaser.Scene {
         this.levelUpButton = levelUpButton;
         this.levelUpButtonBg = levelUpBg;
         
-        // Start level-up timer after player starts playing
+        // Hide level-up button initially
+        this.levelUpButton.setVisible(false);
+        this.levelUpButtonVisible = false;
+        this.levelUpButtonShowTime = null;
+        
+        // Start level-up timer (first appearance after 20 seconds)
         this.time.addEvent({
             delay: 1000,
             callback: this.checkLevelUpTimer,
@@ -265,8 +270,9 @@ class MergeScene extends Phaser.Scene {
             this.startOverlay = null;
             this.hasStartedPlaying = true;
             
-            // Start level-up timer
+            // Start level-up timer (20 seconds for first appearance)
             this.levelUpTimer = this.time.now;
+            this.firstLevelUpTimer = true;
         }
     }
 
@@ -316,7 +322,20 @@ class MergeScene extends Phaser.Scene {
         // Create battery sprite
         const battery = this.add.image(cellData.x, cellData.y, 'battery');
         battery.setScale(0.6);
-        battery.setInteractive({ draggable: true });
+        
+        // Create invisible hit area covering entire cell for dragging
+        const hitArea = new Phaser.Geom.Rectangle(
+            -this.CELL_SIZE / 2,
+            -this.CELL_SIZE / 2,
+            this.CELL_SIZE,
+            this.CELL_SIZE
+        );
+        battery.setInteractive({
+            hitArea: hitArea,
+            hitAreaCallback: Phaser.Geom.Rectangle.Contains,
+            draggable: true,
+            useHandCursor: true
+        });
         
         // Add level badge (circle with number on bottom left)
         const badgeRadius = 18;
@@ -376,11 +395,11 @@ class MergeScene extends Phaser.Scene {
         const batteryData = gameObject.getData('batteryData');
         this.draggingBattery = batteryData;
         
-        // Bring to front
-        batteryData.sprite.setDepth(1000);
-        batteryData.badge.setDepth(1001);
-        batteryData.badgeText.setDepth(1002);
-        batteryData.levelText.setDepth(1003);
+        // Bring to front with very high depth (above both scenes)
+        batteryData.sprite.setDepth(10000);
+        batteryData.badge.setDepth(10001);
+        batteryData.badgeText.setDepth(10002);
+        batteryData.levelText.setDepth(10003);
         
         // Remove start overlay on first drag
         if (this.startOverlay) {
@@ -652,7 +671,7 @@ class MergeScene extends Phaser.Scene {
             if (newButtonLevel > this.spawnButtonLevel) {
                 this.spawnButtonLevel = newButtonLevel;
                 this.spawnCost = newButtonLevel * 10;
-                this.spawnButtonText.setText(`${this.spawnCost} 💰`);
+                this.spawnButtonText.setText(`${this.spawnCost}`);
             }
         }
         
@@ -669,18 +688,37 @@ class MergeScene extends Phaser.Scene {
     checkLevelUpTimer() {
         if (!this.hasStartedPlaying) return;
         
-        if (this.levelUpTimer && !this.levelUpAvailable) {
-            const elapsed = this.time.now - this.levelUpTimer;
-            if (elapsed >= 30000) { // 30 seconds
-                this.levelUpAvailable = true;
+        const currentTime = this.time.now;
+        
+        // If button is visible, check if 30 seconds have passed
+        if (this.levelUpButtonVisible && this.levelUpButtonShowTime) {
+            const elapsedVisible = currentTime - this.levelUpButtonShowTime;
+            if (elapsedVisible >= 30000) { // Hide after 30 seconds
+                this.levelUpButton.setVisible(false);
+                this.levelUpButtonVisible = false;
+                this.levelUpButtonBg.setAlpha(0.5);
+                // Start hidden period
+                this.levelUpTimer = currentTime;
+            }
+        }
+        // If button is hidden, check if it's time to show it
+        else if (!this.levelUpButtonVisible && this.levelUpTimer) {
+            const elapsed = currentTime - this.levelUpTimer;
+            const waitTime = this.firstLevelUpTimer ? 20000 : 30000; // 20s first, then 30s
+            
+            if (elapsed >= waitTime) {
+                this.levelUpButton.setVisible(true);
+                this.levelUpButtonVisible = true;
                 this.levelUpButtonBg.setAlpha(1);
+                this.levelUpButtonShowTime = currentTime;
+                this.firstLevelUpTimer = false; // After first time, use 30s
             }
         }
     }
 
     levelUpAll() {
-        // Simulate watching ad (would normally show ad here)
-        this.showMessage('All batteries upgraded!');
+        // Log ad loading to console
+        console.log('loading ad');
         
         // Upgrade all batteries in grid
         this.batteries.forEach(battery => {
@@ -699,8 +737,9 @@ class MergeScene extends Phaser.Scene {
         // Update spawn button
         this.updateSpawnButton();
         
-        // Reset timer
-        this.levelUpAvailable = false;
+        // Hide button and reset timer
+        this.levelUpButton.setVisible(false);
+        this.levelUpButtonVisible = false;
         this.levelUpButtonBg.setAlpha(0.5);
         this.levelUpTimer = this.time.now;
         
@@ -709,7 +748,7 @@ class MergeScene extends Phaser.Scene {
     }
 
     updateCoinDisplay() {
-        this.coinText.setText(`💰 ${this.coins}`);
+        this.coinText.setText(`${this.coins}`);
         this.updateSpawnButton();
     }
 

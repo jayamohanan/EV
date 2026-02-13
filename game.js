@@ -32,7 +32,6 @@
             // Load vehicle assets
             this.load.image('chassis', 'graphics/chassis.png');
             this.load.image('tire', 'graphics/tire.png');
-            this.load.image('battery', 'graphics/battery.png');
             this.load.image('ground', 'graphics/ground.png');
             
             // Load engine sound
@@ -47,20 +46,9 @@
             // Add background
             this.add.rectangle(sceneWidth / 2, sceneHeight / 2, sceneWidth, sceneHeight, 0xD3E8EE);
             
-            // Add title
-            this.add.text(sceneWidth / 2, 70, 'VEHICLE CHARGING', {
-                fontSize: '28px',
-                fontFamily: CONFIG.FONT_FAMILY,
-                color: '#2C5F8D',
-                fontStyle: 'bold'
-            }).setOrigin(0.5).setDepth(600);
-            
-            // Add separator line at bottom
-            const separator = this.add.graphics();
-            separator.lineStyle(4, 0x2C5F8D, 1);
-            separator.lineBetween(0, sceneHeight - 2, sceneWidth, sceneHeight - 2);
-            separator.setDepth(600);
-            
+        // Add separator line at bottom
+        const separator = this.add.graphics();
+        separator.lineStyle(4, 0x2C5F8D, 1);
             // Create world bounds
             this.matter.world.setBounds(0, 0, sceneWidth, sceneHeight);
             this.matter.world.setGravity(0, CONFIG.PHYSICS.GRAVITY_Y);
@@ -77,9 +65,6 @@
             // Create charge bar UI
             this.createChargeBar();
             
-            // Create UI controls (Gas/Brake buttons)
-            this.createControls();
-            
             // Setup keyboard controls
             this.cursors = this.input.keyboard.createCursorKeys();
             
@@ -88,22 +73,14 @@
             this.cameras.main.scrollX = 0;
             this.cameras.main.scrollY = 0;
             
-            // Add debug text
-            this.debugText = this.add.text(10, 10, '', {
-                fontSize: '16px',
-                color: '#000000',
-                backgroundColor: '#ffffff88',
-                padding: { x: 10, y: 10 }
-            }).setScrollFactor(0).setDepth(1000);
-            
             // Setup engine sound
             this.setupEngineSound();
             
             // Setup drag and drop for batteries from MergeScene
             this.setupBatteryDropZones();
             
-            // Add test buttons for adding batteries (for testing)
-            this.createTestButtons();
+            // Start engine automatically
+            this.startEngine();
         }
 
         createThinGround() {
@@ -151,8 +128,8 @@
             
             // Position slots below where ground will be
             const slotY = sceneHeight * 0.35 + 120; // Below ground
-            const slotSize = 120;
-            const slotGap = 20;
+            const slotSize = 100; // Same as grid cells
+            const slotGap = 15; // Same as grid cell gap
             const totalWidth = 3 * slotSize + 2 * slotGap;
             const startX = (sceneWidth - totalWidth) / 2;
             
@@ -297,7 +274,7 @@
             }).setOrigin(0.5);
             
             // Show charge rate
-            slot.chargeText.setText(`+${chargePerMinute}/min`);
+            slot.chargeText.setText(`${chargePerMinute}`);
             slot.chargeText.setVisible(true);
             slot.slotFilledBg.setVisible(true);
             
@@ -415,7 +392,7 @@
             // Update UI
             this.updateChargeBar();
             
-            // Car scale animation (slight pulse)
+            // Car scale animation (slight pulse, 5% scale up)
             if (this.vehicle && this.chassisSprite) {
                 this.tweens.add({
                     targets: [this.chassisSprite, this.rearWheelSprite, this.frontWheelSprite],
@@ -441,52 +418,7 @@
             console.log('Battery dropped on slot', slotIndex);
         }
         
-        createTestButtons() {
-            // Test buttons to add batteries (will be removed once drag-drop from MergeScene works)
-            const sceneWidth = this.cameras.main.width;
-            const btnY = 180;
-            const btnGap = 110;
-            
-            ['Bat1', 'Bat2', 'Bat3'].forEach((label, i) => {
-                const btn = this.add.rectangle(
-                    (sceneWidth / 2) - btnGap + i * btnGap,
-                    btnY,
-                    85, 40,
-                    0x2196F3
-                ).setInteractive({ useHandCursor: true });
-                
-                const text = this.add.text(
-                    (sceneWidth / 2) - btnGap + i * btnGap,
-                    btnY,
-                    label,
-                    { fontSize: '16px', color: '#fff', fontStyle: 'bold' }
-                ).setOrigin(0.5);
-                
-                btn.on('pointerdown', () => {
-                    // Add battery level (i+1) to first empty slot
-                    for (let slot = 0; slot < 3; slot++) {
-                        if (this.chargingSlots[slot] === null) {
-                            this.addBatteryToSlot(slot, i + 1);
-                            break;
-                        }
-                    }
-                });
-            });
-            
-            // Remove battery button
-            const removeBtn = this.add.rectangle(sceneWidth / 2, btnY + 50, 120, 40, 0xF44336)
-                .setInteractive({ useHandCursor: true });
-            
-            const removeText = this.add.text(sceneWidth / 2, btnY + 50, 'Remove All', {
-                fontSize: '16px', color: '#fff', fontStyle: 'bold'
-            }).setOrigin(0.5);
-            
-            removeBtn.on('pointerdown', () => {
-                for (let i = 0; i < 3; i++) {
-                    this.removeBatteryFromSlot(i);
-                }
-            });
-        }
+        // Test buttons removed - batteries added via drag and drop from grid
 
         createVehicle() {
             const vc = CONFIG.VEHICLE;
@@ -599,73 +531,7 @@
             this.debugCircles.setDepth(100);  // Draw on top of everything
         }
 
-        createControls() {
-            const sceneWidth = this.cameras.main.width;
-            const sceneHeight = this.cameras.main.height;
-            const buttonSize = 90;
-            const bottomMargin = 50;
-            const sideMargin = 30;
-            
-            // Brake button (LEFT SIDE)
-            this.brakeButton = this.add.rectangle(
-                sideMargin + buttonSize / 2,
-                sceneHeight - bottomMargin - buttonSize / 2,
-                buttonSize, buttonSize, 0xe74c3c
-            ).setScrollFactor(0).setInteractive().setDepth(999);
-            
-            this.brakeText = this.add.text(
-                sideMargin + buttonSize / 2,
-                sceneHeight - bottomMargin - buttonSize / 2,
-                'BRAKE',
-                { fontSize: '18px', color: '#ffffff', fontStyle: 'bold' }
-            ).setOrigin(0.5).setScrollFactor(0).setDepth(1000);
-            
-            // Gas button (RIGHT SIDE)
-            this.gasButton = this.add.rectangle(
-                sceneWidth - sideMargin - buttonSize / 2,
-                sceneHeight - bottomMargin - buttonSize / 2,
-                buttonSize, buttonSize, 0x27ae60
-            ).setScrollFactor(0).setInteractive().setDepth(999);
-            
-            this.gasText = this.add.text(
-                sceneWidth - sideMargin - buttonSize / 2,
-                sceneHeight - bottomMargin - buttonSize / 2,
-                'GAS',
-                { fontSize: '18px', color: '#ffffff', fontStyle: 'bold' }
-            ).setOrigin(0.5).setScrollFactor(0).setDepth(1000);
-            
-            // Gas button interactions
-            this.gasButton.on('pointerdown', () => {
-                this.isForward = true;
-                this.gasButton.setFillStyle(0x229954);
-            });
-            
-            this.gasButton.on('pointerup', () => {
-                this.isForward = false;
-                this.gasButton.setFillStyle(0x27ae60);
-            });
-            
-            this.gasButton.on('pointerout', () => {
-                this.isForward = false;
-                this.gasButton.setFillStyle(0x27ae60);
-            });
-            
-            // Brake button interactions
-            this.brakeButton.on('pointerdown', () => {
-                this.isReverse = true;
-                this.brakeButton.setFillStyle(0xc0392b);
-            });
-            
-            this.brakeButton.on('pointerup', () => {
-                this.isReverse = false;
-                this.brakeButton.setFillStyle(0xe74c3c);
-            });
-            
-            this.brakeButton.on('pointerout', () => {
-                this.isReverse = false;
-                this.brakeButton.setFillStyle(0xe74c3c);
-            });
-        }
+        // Brake and gas buttons removed - car automatically accelerates
 
         setupEngineSound() {
             // Create looping engine sound
@@ -698,10 +564,6 @@
             const vc = CONFIG.VEHICLE;
             const ac = CONFIG.AUDIO;
             
-            // Check keyboard and button input
-            const isAccelerating = this.isForward || this.cursors.right.isDown;
-            const isBraking = this.isReverse || this.cursors.left.isDown;
-            
             // Get current wheel speed (absolute value for pitch calculation)
             const wheelSpeed = Math.abs(this.vehicle.rearWheel.angularSpeed);
             const maxSpeed = vc.MAX_SPEED;
@@ -709,34 +571,13 @@
             // Calculate speed ratio (0 to 1)
             const speedRatio = Math.min(wheelSpeed / maxSpeed, 1.0);
 
-            if (isAccelerating) {
-                // Forward acceleration - increase pitch and volume
-                this.targetPlaybackRate = Phaser.Math.Linear(
-                    ac.ENGINE_IDLE_RATE,
-                    ac.ENGINE_MAX_RATE,
-                    speedRatio
-                );
-                this.targetVolume = ac.ENGINE_ACTIVE_VOLUME;
-                
-            } else if (isBraking) {
-                // Reverse - lower pitch, moderate volume
-                this.targetPlaybackRate = Phaser.Math.Linear(
-                    ac.ENGINE_IDLE_RATE,
-                    ac.ENGINE_REVERSE_RATE,
-                    speedRatio
-                );
-                this.targetVolume = ac.ENGINE_ACTIVE_VOLUME * 0.8;
-                
-            } else {
-                // Idle/coasting - smooth back to idle with speed-based pitch
-                const coastingRate = Phaser.Math.Linear(
-                    ac.ENGINE_IDLE_RATE,
-                    ac.ENGINE_MAX_RATE * 0.6,
-                    speedRatio * 0.5  // Reduced influence when coasting
-                );
-                this.targetPlaybackRate = coastingRate;
-                this.targetVolume = ac.ENGINE_IDLE_VOLUME + (speedRatio * 0.2);
-            }
+            // Always accelerating - increase pitch and volume based on speed
+            this.targetPlaybackRate = Phaser.Math.Linear(
+                ac.ENGINE_IDLE_RATE,
+                ac.ENGINE_MAX_RATE,
+                speedRatio
+            );
+            this.targetVolume = ac.ENGINE_ACTIVE_VOLUME;
 
             // Smooth interpolation (lerp) for natural sound transitions
             this.currentPlaybackRate = Phaser.Math.Linear(
@@ -761,14 +602,7 @@
         update() {
             if (!this.vehicle) return;
             
-            // Start engine on first input
-            const hasInput = this.isForward || this.isReverse || 
-                           this.cursors.right.isDown || this.cursors.left.isDown;
-            if (!this.isEngineRunning && hasInput) {
-                this.startEngine();
-            }
-            
-            // Apply motor power
+            // Apply motor power (always accelerating)
             this.applyMotorPower();
             
             // Update engine sound
@@ -776,46 +610,24 @@
             
             // Update sprite positions
             this.updateVehicleGraphics();
-            
-            // Update debug info
-            this.updateDebugText();
         }
 
         applyMotorPower() {
             const vc = CONFIG.VEHICLE;
             
-            // Check keyboard input (Right arrow = forward, Left arrow = brake/reverse)
-            const keyboardForward = this.cursors.right.isDown;
-            const keyboardReverse = this.cursors.left.isDown;
-            
-            // Combine button and keyboard inputs
-            const isAccelerating = this.isForward || keyboardForward;
-            const isBraking = this.isReverse || keyboardReverse;
-            
             // Get current wheel angular velocity
             const rearWheel = this.vehicle.rearWheel;
             const frontWheel = this.vehicle.frontWheel;
             
-            // Apply angular velocity directly (car.ts approach)
-            if (isAccelerating) {
-                // Forward acceleration with gradual ramp
-                let newSpeed = rearWheel.angularSpeed <= 0 
-                    ? vc.MAX_SPEED / 10 
-                    : rearWheel.angularSpeed + vc.ACCELERATION;
-                if (newSpeed > vc.MAX_SPEED) newSpeed = vc.MAX_SPEED;
-                
-                this.matter.body.setAngularVelocity(rearWheel, newSpeed);
-                this.matter.body.setAngularVelocity(frontWheel, newSpeed);
-            } else if (isBraking) {
-                // Reverse with gradual ramp
-                let newSpeed = rearWheel.angularSpeed >= 0
-                    ? -vc.MAX_SPEED_BACKWARDS / 10
-                    : rearWheel.angularSpeed - vc.ACCELERATION_BACKWARDS;
-                if (newSpeed < -vc.MAX_SPEED_BACKWARDS) newSpeed = -vc.MAX_SPEED_BACKWARDS;
-                
-                this.matter.body.setAngularVelocity(rearWheel, newSpeed);
-                this.matter.body.setAngularVelocity(frontWheel, newSpeed);
-            }
+            // Always apply forward acceleration (automatic gas pedal)
+            // Forward acceleration with gradual ramp
+            let newSpeed = rearWheel.angularSpeed <= 0 
+                ? vc.MAX_SPEED / 10 
+                : rearWheel.angularSpeed + vc.ACCELERATION;
+            if (newSpeed > vc.MAX_SPEED) newSpeed = vc.MAX_SPEED;
+            
+            this.matter.body.setAngularVelocity(rearWheel, newSpeed);
+            this.matter.body.setAngularVelocity(frontWheel, newSpeed);
         }
 
         updateVehicleGraphics() {
@@ -886,19 +698,7 @@
             }
         }
 
-        updateDebugText() {
-            const chassis = this.vehicle.chassis;
-            const speed = Math.sqrt(chassis.velocity.x ** 2 + chassis.velocity.y ** 2).toFixed(1);
-            const angle = (chassis.angle * 180 / Math.PI).toFixed(1);
-            const wheelSpeed = this.vehicle.rearWheel.angularSpeed.toFixed(2);
-            
-            this.debugText.setText([
-                `Position: ${chassis.position.x.toFixed(0)}, ${chassis.position.y.toFixed(0)}`,
-                `Speed: ${speed}`,
-                `Angle: ${angle}°`,
-                `Wheel Speed: ${wheelSpeed}`
-            ]);
-        }
+        // Debug text removed
     }
 
     const config = {
