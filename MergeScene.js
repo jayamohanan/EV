@@ -220,25 +220,25 @@ class MergeScene extends Phaser.Scene {
         );
         
         // Highlight spawn button with pulsing effect
-        const highlight = this.add.rectangle(
-            this.spawnButton.x,
-            this.spawnButton.y,
-            220,
-            90,
-            0xFFFF00,
-            0
-        );
-        highlight.setStrokeStyle(5, 0xFFFF00);
+        // const highlight = this.add.rectangle(
+        //     this.spawnButton.x,
+        //     this.spawnButton.y,
+        //     220,
+        //     90,
+        //     0xFFFF00,
+        //     0
+        // );
+        // highlight.setStrokeStyle(5, 0xFFFF00);
         
-        this.tweens.add({
-            targets: highlight,
-            alpha: 0.8,
-            scaleX: 1.1,
-            scaleY: 1.1,
-            duration: 800,
-            yoyo: true,
-            repeat: -1
-        });
+        // this.tweens.add({
+        //     targets: highlight,
+        //     alpha: 0.8,
+        //     scaleX: 1.1,
+        //     scaleY: 1.1,
+        //     duration: 800,
+        //     yoyo: true,
+        //     repeat: -1
+        // });
         
         // Animated pointer (point.png) positioned below button center
         const pointerY = this.spawnButton.y + CONFIG.POINTER.OFFSET_Y;
@@ -263,17 +263,17 @@ class MergeScene extends Phaser.Scene {
         });
         
         this.startOverlay.setDepth(100);
-        highlight.setDepth(101);
+        // highlight.setDepth(101);
         pointer.setDepth(102);
         
-        this.startHighlight = highlight;
+        // this.startHighlight = highlight;
         this.startPointer = pointer;
     }
 
     removeStartOverlay() {
         if (this.startOverlay) {
             this.startOverlay.destroy();
-            this.startHighlight.destroy();
+            // this.startHighlight.destroy();
             this.startPointer.destroy();
             this.startOverlay = null;
             this.hasStartedPlaying = true;

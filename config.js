@@ -106,7 +106,7 @@ var CONFIG = {
     
     // Pointer animation settings (for tutorial overlay)
     POINTER: {
-        SCALE: 0.15,                   // Scale of point.png image
+        SCALE: 1,                   // Scale of point.png image
         TINT: 0x808080,                // Grey tint color (0x808080 = grey)
         OFFSET_Y: 20,                  // Pixels below button center where top of pointer appears
         ANIMATION_MOVE_UP: 8,          // Pixels to move up during click animation
