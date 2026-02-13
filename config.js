@@ -102,5 +102,17 @@ var CONFIG = {
         ENGINE_ACTIVE_VOLUME: 0.8,     // Volume when accelerating (0-1)
         RATE_LERP_SPEED: 0.08,         // How fast pitch changes (0.01=slow, 0.2=instant)
         VOLUME_LERP_SPEED: 0.15,       // How fast volume changes (0.01=slow, 0.2=instant)
+    },
+    
+    // Pointer animation settings (for tutorial overlay)
+    POINTER: {
+        SCALE: 0.15,                   // Scale of point.png image
+        TINT: 0x808080,                // Grey tint color (0x808080 = grey)
+        OFFSET_Y: 20,                  // Pixels below button center where top of pointer appears
+        ANIMATION_MOVE_UP: 8,          // Pixels to move up during click animation
+        ANIMATION_SCALE_DOWN: 0.9,     // Scale multiplier during click (0.9 = 10% smaller)
+        ANIMATION_DURATION: 500,       // Duration of one click animation in milliseconds
+        ANIMATION_YOYO: true,          // Animation returns to start
+        ANIMATION_REPEAT: -1           // Repeat indefinitely (-1)
     }
 };

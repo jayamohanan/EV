@@ -31,6 +31,7 @@ class MergeScene extends Phaser.Scene {
     preload() {
         this.load.image('battery', 'graphics/battery.png');
         this.load.image('coin', 'graphics/coin.png');
+        this.load.image('point', 'graphics/point.png');
     }
 
     create() {
@@ -239,34 +240,41 @@ class MergeScene extends Phaser.Scene {
             repeat: -1
         });
         
-        // Arrow pointing to spawn button
-        const arrowText = this.add.text(
+        // Animated pointer (point.png) positioned below button center
+        const pointerY = this.spawnButton.y + CONFIG.POINTER.OFFSET_Y;
+        const pointer = this.add.image(
             this.spawnButton.x,
-            this.spawnButton.y - 100,
-            '👇 Click to Spawn Battery',
-            {
-                fontSize: '28px',
-                fontFamily: CONFIG.FONT_FAMILY,
-                color: '#FFFFFF',
-                fontStyle: 'bold',
-                stroke: '#000000',
-                strokeThickness: 4
-            }
-        ).setOrigin(0.5);
+            pointerY,
+            'point'
+        );
+        pointer.setScale(CONFIG.POINTER.SCALE);
+        pointer.setTint(CONFIG.POINTER.TINT);
+        pointer.setOrigin(0.5, 0);  // Origin at top center, so top appears at pointerY
+        
+        // Click animation: move up and scale down, then back
+        this.tweens.add({
+            targets: pointer,
+            y: pointerY - CONFIG.POINTER.ANIMATION_MOVE_UP,
+            scaleX: CONFIG.POINTER.SCALE * CONFIG.POINTER.ANIMATION_SCALE_DOWN,
+            scaleY: CONFIG.POINTER.SCALE * CONFIG.POINTER.ANIMATION_SCALE_DOWN,
+            duration: CONFIG.POINTER.ANIMATION_DURATION,
+            yoyo: CONFIG.POINTER.ANIMATION_YOYO,
+            repeat: CONFIG.POINTER.ANIMATION_REPEAT
+        });
         
         this.startOverlay.setDepth(100);
         highlight.setDepth(101);
-        arrowText.setDepth(102);
+        pointer.setDepth(102);
         
         this.startHighlight = highlight;
-        this.startArrowText = arrowText;
+        this.startPointer = pointer;
     }
 
     removeStartOverlay() {
         if (this.startOverlay) {
             this.startOverlay.destroy();
             this.startHighlight.destroy();
-            this.startArrowText.destroy();
+            this.startPointer.destroy();
             this.startOverlay = null;
             this.hasStartedPlaying = true;
             
