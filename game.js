@@ -1,10 +1,11 @@
-    // Vehicle Physics Scene for Hill Climb Game
-    class VehicleScene extends Phaser.Scene {
+    // Single Scene combining Vehicle Physics and Battery Merge Game
+    class GameScene extends Phaser.Scene {
         constructor() {
-            super('VehicleScene');
+            super('GameScene');
         }
 
         init() {
+            // Vehicle properties
             this.vehicle = null;
             this.isForward = false;
             this.isReverse = false;
@@ -26,6 +27,31 @@
             this.firstBatteryTime = null;
             this.chargeCycleActive = false;
             this.lastChargeCycle = 0;
+            
+            // Merge Scene properties
+            this.coins = 1000;
+            this.grid = Array(3).fill(null).map(() => Array(3).fill(null)); // 3x3 grid
+            this.gridCells = [];
+            this.batteries = [];
+            this.draggingBattery = null;
+            this.hasStartedPlaying = false;
+            this.spawnButtonLevel = 1;
+            this.spawnCost = 10;
+            this.highestBatteryLevel = 1;
+            this.levelUpTimer = null;
+            this.levelUpButtonVisible = false;
+            this.levelUpButtonShowTime = null;
+            this.firstLevelUpTimer = true;
+            this.mergeTutorialShown = false;
+            this.mergePointer = null;  // Hand animation for merge tutorial
+            
+            // Grid layout constants
+            this.GRID_START_Y = 740;  // Below the vehicle section
+            this.CELL_SIZE = 100;
+            this.CELL_GAP = 15;
+            this.CELL_RADIUS = 15;
+            this.GRID_COLS = 3;
+            this.GRID_ROWS = 3;
         }
 
         preload() {
@@ -33,6 +59,11 @@
             this.load.image('chassis', 'graphics/chassis.png');
             this.load.image('tire', 'graphics/tire.png');
             this.load.image('ground', 'graphics/ground.png');
+            
+            // Load merge scene assets
+            this.load.image('battery', 'graphics/battery.png');
+            this.load.image('coin', 'graphics/coin.png');
+            this.load.image('point', 'graphics/point.png');
             
             // Load engine sound
             this.load.audio('car_idle', 'sounds/car_idle.wav');
@@ -43,12 +74,17 @@
             const sceneWidth = this.cameras.main.width;
             const sceneHeight = this.cameras.main.height;
             
-            // Add background
-            this.add.rectangle(sceneWidth / 2, sceneHeight / 2, sceneWidth, sceneHeight, 0xD3E8EE);
+            // Add vehicle section background (top half)
+            this.add.rectangle(sceneWidth / 2, sceneHeight * 0.25, sceneWidth, sceneHeight * 0.5, 0xD3E8EE);
             
-        // Add separator line at bottom
-        const separator = this.add.graphics();
-        separator.lineStyle(4, 0x2C5F8D, 1);
+            // Add merge section background (bottom half)
+            this.add.rectangle(sceneWidth / 2, sceneHeight * 0.75, sceneWidth, sceneHeight * 0.5, 0xEEF5F8);
+            
+            // Add separator line between sections
+            const separator = this.add.graphics();
+            separator.lineStyle(4, 0x2C5F8D, 1);
+            separator.lineBetween(0, sceneHeight / 2, sceneWidth, sceneHeight / 2);
+            
             // Create world bounds
             this.matter.world.setBounds(0, 0, sceneWidth, sceneHeight);
             this.matter.world.setGravity(0, CONFIG.PHYSICS.GRAVITY_Y);
@@ -76,11 +112,31 @@
             // Setup engine sound
             this.setupEngineSound();
             
-            // Setup drag and drop for batteries from MergeScene
+            // Setup drag and drop for batteries
             this.setupBatteryDropZones();
             
             // Start engine automatically
             this.startEngine();
+            
+            // Create coin display
+            this.createCoinDisplay();
+            
+            // Create 3x3 grid
+            this.createGrid();
+            
+            // Spawn initial battery in grid
+            this.spawnBatteryInGrid(0, 0, 1);
+            
+            // Create spawn button and level-up button
+            this.createButtons();
+            
+            // Show initial overlay
+            this.createStartOverlay();
+            
+            // Setup input handlers for drag and drop
+            this.input.on('dragstart', this.onDragStart, this);
+            this.input.on('drag', this.onDrag, this);
+            this.input.on('dragend', this.onDragEnd, this);
         }
 
         createThinGround() {
@@ -699,13 +755,791 @@
         }
 
         // Debug text removed
+        
+        // ====================
+        // MERGE SCENE METHODS
+        // ====================
+        
+        createCoinDisplay() {
+            const sceneWidth = this.cameras.main.width;
+            const sceneHeight = this.cameras.main.height;
+            
+            // Coin container (in merge section)
+            const coinBg = this.add.rectangle(sceneWidth - 100, sceneHeight * 0.5 + 75, 160, 50, 0xFFD700, 1);
+            coinBg.setStrokeStyle(3, 0xFFA500);
+            
+            // Coin icon
+            const coinIcon = this.add.image(sceneWidth - 140, sceneHeight * 0.5 + 75, 'coin').setScale(0.5);
+            
+            this.coinText = this.add.text(sceneWidth - 80, sceneHeight * 0.5 + 75, `${this.coins}`, {
+                fontSize: '24px',
+                fontFamily: CONFIG.FONT_FAMILY,
+                color: '#000000',
+                fontStyle: 'bold'
+            }).setOrigin(0.5);
+        }
+
+        createGrid() {
+            const sceneWidth = this.cameras.main.width;
+            const sceneHeight = this.cameras.main.height;
+            
+            // Calculate grid center position
+            const gridWidth = this.GRID_COLS * this.CELL_SIZE + (this.GRID_COLS - 1) * this.CELL_GAP;
+            const gridHeight = this.GRID_ROWS * this.CELL_SIZE + (this.GRID_ROWS - 1) * this.CELL_GAP;
+            this.gridStartX = (sceneWidth - gridWidth) / 2 + this.CELL_SIZE / 2;
+            
+            for (let row = 0; row < this.GRID_ROWS; row++) {
+                this.gridCells[row] = [];
+                for (let col = 0; col < this.GRID_COLS; col++) {
+                    const x = this.gridStartX + col * (this.CELL_SIZE + this.CELL_GAP);
+                    const y = this.GRID_START_Y + row * (this.CELL_SIZE + this.CELL_GAP);
+                    
+                    // Empty cell background (rounded rectangle)
+                    const cell = this.add.graphics();
+                    cell.lineStyle(3, 0xBBDDEE, 1);
+                    cell.strokeRoundedRect(
+                        x - this.CELL_SIZE / 2,
+                        y - this.CELL_SIZE / 2,
+                        this.CELL_SIZE,
+                        this.CELL_SIZE,
+                        this.CELL_RADIUS
+                    );
+                    
+                    // Filled cell background (hidden initially)
+                    const filledBg = this.add.graphics();
+                    filledBg.fillStyle(0xA8D8EA, 1);
+                    filledBg.fillRoundedRect(
+                        x - this.CELL_SIZE / 2,
+                        y - this.CELL_SIZE / 2,
+                        this.CELL_SIZE,
+                        this.CELL_SIZE,
+                        this.CELL_RADIUS
+                    );
+                    filledBg.setVisible(false);
+                    
+                    this.gridCells[row][col] = {
+                        x: x,
+                        y: y,
+                        row: row,
+                        col: col,
+                        isEmpty: true,
+                        cell: cell,
+                        filledBg: filledBg
+                    };
+                }
+            }
+        }
+
+        createButtons() {
+            const sceneWidth = this.cameras.main.width;
+            const sceneHeight = this.cameras.main.height;
+            const buttonY = sceneHeight - 80;
+            
+            // Spawn button
+            const spawnButton = this.add.container(sceneWidth / 2, buttonY);
+            
+            const spawnBg = this.add.rectangle(0, 0, 200, 70, 0x4CAF50);
+            spawnBg.setStrokeStyle(4, 0x2E7D32);
+            spawnBg.setInteractive({ useHandCursor: true });
+            
+            // Battery icon on button
+            const spawnIcon = this.add.image(-60, 0, 'battery').setScale(0.4);
+            
+            this.spawnButtonText = this.add.text(15, 0, `10`, {
+                fontSize: '24px',
+                fontFamily: CONFIG.FONT_FAMILY,
+                color: '#FFFFFF',
+                fontStyle: 'bold'
+            }).setOrigin(0.5);
+            
+            // Coin icon on button
+            const spawnCoinIcon = this.add.image(40, 0, 'coin').setScale(0.3);
+            
+            spawnButton.add([spawnBg, spawnIcon, this.spawnButtonText, spawnCoinIcon]);
+            
+            spawnBg.on('pointerdown', () => {
+                this.spawnBattery();
+            });
+            
+            this.spawnButton = spawnButton;
+            this.spawnButtonBg = spawnBg;
+            
+            // Level-up button (left of spawn button)
+            const levelUpButton = this.add.container(sceneWidth / 2 - 220, buttonY);
+            
+            const levelUpBg = this.add.rectangle(0, 0, 180, 70, 0xFF9800);
+            levelUpBg.setStrokeStyle(4, 0xE65100);
+            levelUpBg.setInteractive({ useHandCursor: true });
+            
+            const levelUpText = this.add.text(0, 0, '📺 Level Up\nAll', {
+                fontSize: '18px',
+                fontFamily: CONFIG.FONT_FAMILY,
+                align: 'center',
+                color: '#FFFFFF',
+                fontStyle: 'bold'
+            }).setOrigin(0.5);
+            
+            levelUpButton.add([levelUpBg, levelUpText]);
+            
+            levelUpBg.on('pointerdown', () => {
+                if (this.levelUpButtonVisible) {
+                    this.levelUpAll();
+                }
+            });
+            
+            this.levelUpButton = levelUpButton;
+            this.levelUpButtonBg = levelUpBg;
+            
+            // Hide level-up button initially
+            this.levelUpButton.setVisible(false);
+            this.levelUpButtonVisible = false;
+            this.levelUpButtonShowTime = null;
+            
+            // Start level-up timer (first appearance after 20 seconds)
+            this.time.addEvent({
+                delay: 1000,
+                callback: this.checkLevelUpTimer,
+                callbackScope: this,
+                loop: true
+            });
+        }
+
+        createStartOverlay() {
+            const sceneWidth = this.cameras.main.width;
+            const sceneHeight = this.cameras.main.height;
+            
+            // Create overlay covering entire scene
+            this.startOverlay = this.add.rectangle(
+                sceneWidth / 2,
+                sceneHeight / 2,
+                sceneWidth,
+                sceneHeight,
+                0x000000,
+                0.6
+            );
+            
+            // Animated pointer (point.png) positioned below button center
+            const pointerY = this.spawnButton.y + CONFIG.POINTER.OFFSET_Y;
+            const pointer = this.add.image(
+                this.spawnButton.x,
+                pointerY,
+                'point'
+            );
+            pointer.setScale(CONFIG.POINTER.SCALE);
+            pointer.setTint(CONFIG.POINTER.TINT);
+            pointer.setOrigin(0.5, 0);  // Origin at top center, so top appears at pointerY
+            
+            // Click animation: move up and scale down, then back
+            this.tweens.add({
+                targets: pointer,
+                y: pointerY - CONFIG.POINTER.ANIMATION_MOVE_UP,
+                scaleX: CONFIG.POINTER.SCALE * CONFIG.POINTER.ANIMATION_SCALE_DOWN,
+                scaleY: CONFIG.POINTER.SCALE * CONFIG.POINTER.ANIMATION_SCALE_DOWN,
+                duration: CONFIG.POINTER.ANIMATION_DURATION,
+                yoyo: CONFIG.POINTER.ANIMATION_YOYO,
+                repeat: CONFIG.POINTER.ANIMATION_REPEAT
+            });
+            
+            // Set depths: overlay behind button, pointer on top of everything
+            this.startOverlay.setDepth(100);
+            this.spawnButton.setDepth(101);  // Button visible above overlay
+            pointer.setDepth(102);            // Pointer on top
+            
+            this.startPointer = pointer;
+        }
+
+        removeStartOverlay() {
+            if (this.startOverlay) {
+                this.startOverlay.destroy();
+                this.startPointer.destroy();
+                this.startOverlay = null;
+                this.hasStartedPlaying = true;
+                
+                // Start level-up timer (20 seconds for first appearance)
+                this.levelUpTimer = this.time.now;
+                this.firstLevelUpTimer = true;
+            }
+        }
+        
+        checkAndShowMergeTutorial() {
+            // Show merge tutorial when second battery is spawned
+            if (!this.mergeTutorialShown && this.batteries.length === 2 && !this.mergePointer) {
+                this.createMergeTutorial();
+            }
+        }
+        
+        createMergeTutorial() {
+            // NO OVERLAY - just the hand animation
+            
+            // Get positions of first two cells (0,0) and (0,1)
+            const cell1X = this.gridStartX;
+            const cell1Y = this.GRID_START_Y;
+            const cell2X = this.gridStartX + (this.CELL_SIZE + this.CELL_GAP);
+            const cell2Y = this.GRID_START_Y;
+            
+            // Create pointer with tip at horizontal center of cells
+            const mergePointer = this.add.image(
+                cell1X,
+                cell1Y,  // Center of cell, not below
+                'point'
+            );
+            mergePointer.setScale(CONFIG.POINTER.SCALE);
+            mergePointer.setTint(CONFIG.POINTER.TINT);
+            mergePointer.setOrigin(0.5, 0);  // Origin at top center, so tip is at cell center
+            mergePointer.setDepth(102); // Above everything else
+            
+            // Animate pointer from cell 1 to cell 2 horizontally
+            // Left to right, then reset and repeat (no yoyo)
+            this.tweens.add({
+                targets: mergePointer,
+                x: cell2X,
+                duration: CONFIG.MERGE_TUTORIAL.ANIMATION_DURATION,
+                ease: CONFIG.MERGE_TUTORIAL.ANIMATION_EASE,
+                yoyo: false,  // Don't go back
+                repeat: -1,   // Repeat infinitely
+                repeatDelay: 200  // Small pause before repeating (appears, animates, disappears, reappears)
+            });
+            
+            this.mergePointer = mergePointer;
+        }
+        
+        removeMergeTutorial() {
+            if (this.mergePointer) {
+                this.mergePointer.destroy();
+                this.mergePointer = null;
+                this.mergeTutorialShown = true; // Mark as shown so it never appears again
+            }
+        }
+
+        spawnBattery() {
+            // Check if player can afford
+            if (this.coins < this.spawnCost) {
+                return;
+            }
+            
+            // Find first empty cell (top-left to bottom-right)
+            let emptyCell = null;
+            for (let row = 0; row < this.GRID_ROWS; row++) {
+                for (let col = 0; col < this.GRID_COLS; col++) {
+                    if (this.grid[row][col] === null) {
+                        emptyCell = { row, col };
+                        break;
+                    }
+                }
+                if (emptyCell) break;
+            }
+            
+            // Simply don't spawn if grid is full (no message)
+            if (!emptyCell) {
+                return;
+            }
+            
+            // Deduct coins
+            this.coins -= this.spawnCost;
+            this.updateCoinDisplay();
+            
+            // Spawn battery
+            this.spawnBatteryInGrid(emptyCell.row, emptyCell.col, this.spawnButtonLevel);
+            
+            // Remove overlay if first spawn
+            if (this.startOverlay) {
+                this.removeStartOverlay();
+            }
+            
+            // Check if we should show merge tutorial
+            this.checkAndShowMergeTutorial();
+            
+            // Update spawn button state
+            this.updateSpawnButton();
+        }
+
+        spawnBatteryInGrid(row, col, level) {
+            const cellData = this.gridCells[row][col];
+            
+            // Create battery sprite
+            const battery = this.add.image(cellData.x, cellData.y, 'battery');
+            battery.setScale(0.6);
+            
+            // Create invisible hit area covering entire cell for dragging
+            const hitArea = new Phaser.Geom.Rectangle(
+                -this.CELL_SIZE / 2,
+                -this.CELL_SIZE / 2,
+                this.CELL_SIZE,
+                this.CELL_SIZE
+            );
+            battery.setInteractive({
+                hitArea: hitArea,
+                hitAreaCallback: Phaser.Geom.Rectangle.Contains,
+                draggable: true,
+                useHandCursor: true
+            });
+            
+            // Add level badge (circle with number on bottom left)
+            const badgeRadius = 18;
+            const badgeX = cellData.x - this.CELL_SIZE / 2 + badgeRadius + 5;
+            const badgeY = cellData.y + this.CELL_SIZE / 2 - badgeRadius - 5;
+            
+            const badge = this.add.graphics();
+            badge.fillStyle(0xFF6B6B, 1);
+            badge.fillCircle(badgeX, badgeY, badgeRadius);
+            badge.lineStyle(2, 0xFFFFFF, 1);
+            badge.strokeCircle(badgeX, badgeY, badgeRadius);
+            
+            const badgeText = this.add.text(badgeX, badgeY, level.toString(), {
+                fontSize: '20px',
+                fontFamily: CONFIG.FONT_FAMILY,
+                color: '#FFFFFF',
+                fontStyle: 'bold'
+            }).setOrigin(0.5);
+            
+            // Add level text below battery
+            const levelText = this.add.text(cellData.x, cellData.y + 35, `LVL ${level}`, {
+                fontSize: '16px',
+                fontFamily: CONFIG.FONT_FAMILY,
+                color: '#333333',
+                fontStyle: 'bold'
+            }).setOrigin(0.5);
+            
+            const batteryData = {
+                sprite: battery,
+                badge: badge,
+                badgeText: badgeText,
+                levelText: levelText,
+                level: level,
+                row: row,
+                col: col,
+                originalX: cellData.x,
+                originalY: cellData.y,
+                inGrid: true,
+                inChargingSlot: false
+            };
+            
+            battery.setData('batteryData', batteryData);
+            
+            this.batteries.push(batteryData);
+            this.grid[row][col] = batteryData;
+            
+            // Show filled background
+            cellData.filledBg.setVisible(true);
+            cellData.isEmpty = false;
+            
+            return batteryData;
+        }
+
+        onDragStart(pointer, gameObject) {
+            if (!gameObject.getData('batteryData')) return;
+            
+            const batteryData = gameObject.getData('batteryData');
+            this.draggingBattery = batteryData;
+            
+            // Bring to front with very high depth
+            batteryData.sprite.setDepth(10000);
+            batteryData.badge.setDepth(10001);
+            batteryData.badgeText.setDepth(10002);
+            batteryData.levelText.setDepth(10003);
+            
+            // Remove start overlay on first drag (if user drags instead of clicking spawn)
+            if (this.startOverlay) {
+                this.removeStartOverlay();
+            }
+        }
+
+        onDrag(pointer, gameObject, dragX, dragY) {
+            if (!gameObject.getData('batteryData')) return;
+            
+            const batteryData = gameObject.getData('batteryData');
+            
+            // Move battery and its UI elements
+            batteryData.sprite.x = dragX;
+            batteryData.sprite.y = dragY;
+            
+            const badgeRadius = 18;
+            const offsetX = -this.CELL_SIZE / 2 + badgeRadius + 5;
+            const offsetY = this.CELL_SIZE / 2 - badgeRadius - 5;
+            
+            batteryData.badge.clear();
+            batteryData.badge.fillStyle(0xFF6B6B, 1);
+            batteryData.badge.fillCircle(dragX + offsetX, dragY + offsetY, badgeRadius);
+            batteryData.badge.lineStyle(2, 0xFFFFFF, 1);
+            batteryData.badge.strokeCircle(dragX + offsetX, dragY + offsetY, badgeRadius);
+            
+            batteryData.badgeText.setPosition(dragX + offsetX, dragY + offsetY);
+            batteryData.levelText.setPosition(dragX, dragY + 35);
+            
+            // Check if battery left original cell
+            if (batteryData.inGrid) {
+                const cellData = this.gridCells[batteryData.row][batteryData.col];
+                const bounds = new Phaser.Geom.Rectangle(
+                    cellData.x - this.CELL_SIZE / 2,
+                    cellData.y - this.CELL_SIZE / 2,
+                    this.CELL_SIZE,
+                    this.CELL_SIZE
+                );
+                
+                if (!Phaser.Geom.Rectangle.Contains(bounds, dragX, dragY)) {
+                    cellData.filledBg.setVisible(false);
+                } else {
+                    cellData.filledBg.setVisible(true);
+                }
+            }
+        }
+
+        onDragEnd(pointer, gameObject) {
+            if (!gameObject.getData('batteryData')) return;
+            
+            const batteryData = gameObject.getData('batteryData');
+            const dropX = batteryData.sprite.x;
+            const dropY = batteryData.sprite.y;
+            
+            // Check if dropped on charging slot
+            let droppedOnChargingSlot = false;
+            for (let i = 0; i < this.chargingSlotsUI.length; i++) {
+                const slot = this.chargingSlotsUI[i];
+                const bounds = new Phaser.Geom.Rectangle(
+                    slot.x - 50,
+                    slot.y - 50,
+                    100,
+                    100
+                );
+                
+                if (Phaser.Geom.Rectangle.Contains(bounds, dropX, dropY)) {
+                    // Try to add battery to charging slot
+                    if (this.chargingSlots[i] === null) {
+                        this.addBatteryToSlotFromGrid(i, batteryData);
+                        droppedOnChargingSlot = true;
+                        break;
+                    }
+                }
+            }
+            
+            if (!droppedOnChargingSlot) {
+                // Find which grid cell was dropped on
+                let targetCell = null;
+                for (let row = 0; row < this.GRID_ROWS; row++) {
+                    for (let col = 0; col < this.GRID_COLS; col++) {
+                        const cellData = this.gridCells[row][col];
+                        const bounds = new Phaser.Geom.Rectangle(
+                            cellData.x - this.CELL_SIZE / 2,
+                            cellData.y - this.CELL_SIZE / 2,
+                            this.CELL_SIZE,
+                            this.CELL_SIZE
+                        );
+                        
+                        if (Phaser.Geom.Rectangle.Contains(bounds, dropX, dropY)) {
+                            targetCell = { row, col, cellData };
+                            break;
+                        }
+                    }
+                    if (targetCell) break;
+                }
+                
+                if (targetCell) {
+                    this.handleDrop(batteryData, targetCell);
+                } else {
+                    // Return to original position
+                    this.returnBatteryToPosition(batteryData);
+                }
+            }
+            
+            this.draggingBattery = null;
+        }
+
+        handleDrop(batteryData, targetCell) {
+            const targetBattery = this.grid[targetCell.row][targetCell.col];
+            
+            if (targetBattery === null) {
+                // Empty cell - move battery
+                this.moveBattery(batteryData, targetCell.row, targetCell.col);
+            } else if (targetBattery === batteryData) {
+                // Same cell - return to position
+                this.returnBatteryToPosition(batteryData);
+            } else if (targetBattery.level === batteryData.level) {
+                // Same level - merge
+                this.mergeBatteries(batteryData, targetBattery, targetCell.row, targetCell.col);
+            } else {
+                // Different level - swap
+                this.swapBatteries(batteryData, targetBattery);
+            }
+        }
+
+        moveBattery(batteryData, newRow, newCol) {
+            // Clear old position
+            if (batteryData.inGrid) {
+                this.grid[batteryData.row][batteryData.col] = null;
+                this.gridCells[batteryData.row][batteryData.col].filledBg.setVisible(false);
+                this.gridCells[batteryData.row][batteryData.col].isEmpty = true;
+            }
+            
+            // Update position
+            batteryData.row = newRow;
+            batteryData.col = newCol;
+            this.grid[newRow][newCol] = batteryData;
+            
+            const cellData = this.gridCells[newRow][newCol];
+            batteryData.originalX = cellData.x;
+            batteryData.originalY = cellData.y;
+            
+            // Animate to new position
+            this.returnBatteryToPosition(batteryData);
+            
+            // Show filled background
+            cellData.filledBg.setVisible(true);
+            cellData.isEmpty = false;
+        }
+
+        mergeBatteries(draggedBattery, targetBattery, targetRow, targetCol) {
+            // Remove merge tutorial animation on first merge
+            if (this.mergePointer) {
+                this.removeMergeTutorial();
+            }
+            
+            // Remove dragged battery
+            this.removeBattery(draggedBattery);
+            
+            // Remove target battery
+            this.removeBattery(targetBattery);
+            
+            // Create new battery at target position with level + 1
+            const newLevel = targetBattery.level + 1;
+            this.spawnBatteryInGrid(targetRow, targetCol, newLevel);
+            
+            // Update highest level
+            if (newLevel > this.highestBatteryLevel) {
+                this.highestBatteryLevel = newLevel;
+                this.updateSpawnButton();
+            }
+            
+            // Merge animation effect
+            this.createMergeEffect(this.gridCells[targetRow][targetCol].x, this.gridCells[targetRow][targetCol].y);
+        }
+
+        swapBatteries(battery1, battery2) {
+            const row1 = battery1.row;
+            const col1 = battery1.col;
+            const row2 = battery2.row;
+            const col2 = battery2.col;
+            
+            // Swap in grid
+            this.grid[row1][col1] = battery2;
+            this.grid[row2][col2] = battery1;
+            
+            // Update positions
+            battery1.row = row2;
+            battery1.col = col2;
+            battery1.originalX = this.gridCells[row2][col2].x;
+            battery1.originalY = this.gridCells[row2][col2].y;
+            
+            battery2.row = row1;
+            battery2.col = col1;
+            battery2.originalX = this.gridCells[row1][col1].x;
+            battery2.originalY = this.gridCells[row1][col1].y;
+            
+            // Animate both
+            this.returnBatteryToPosition(battery1);
+            this.returnBatteryToPosition(battery2);
+        }
+
+        removeBattery(batteryData) {
+            // Remove from grid
+            if (batteryData.inGrid) {
+                this.grid[batteryData.row][batteryData.col] = null;
+                this.gridCells[batteryData.row][batteryData.col].filledBg.setVisible(false);
+                this.gridCells[batteryData.row][batteryData.col].isEmpty = true;
+            }
+            
+            // Remove from batteries array
+            const index = this.batteries.indexOf(batteryData);
+            if (index > -1) {
+                this.batteries.splice(index, 1);
+            }
+            
+            // Destroy sprites
+            batteryData.sprite.destroy();
+            batteryData.badge.destroy();
+            batteryData.badgeText.destroy();
+            batteryData.levelText.destroy();
+        }
+
+        returnBatteryToPosition(batteryData) {
+            batteryData.sprite.setDepth(10);
+            batteryData.badge.setDepth(11);
+            batteryData.badgeText.setDepth(12);
+            batteryData.levelText.setDepth(13);
+            
+            // Animate back to original position
+            this.tweens.add({
+                targets: batteryData.sprite,
+                x: batteryData.originalX,
+                y: batteryData.originalY,
+                duration: 200,
+                ease: 'Back.easeOut'
+            });
+            
+            const badgeRadius = 18;
+            const offsetX = -this.CELL_SIZE / 2 + badgeRadius + 5;
+            const offsetY = this.CELL_SIZE / 2 - badgeRadius - 5;
+            
+            this.tweens.add({
+                targets: batteryData.badgeText,
+                x: batteryData.originalX + offsetX,
+                y: batteryData.originalY + offsetY,
+                duration: 200,
+                ease: 'Back.easeOut',
+                onUpdate: () => {
+                    batteryData.badge.clear();
+                    batteryData.badge.fillStyle(0xFF6B6B, 1);
+                    batteryData.badge.fillCircle(
+                        batteryData.badgeText.x,
+                        batteryData.badgeText.y,
+                        badgeRadius
+                    );
+                    batteryData.badge.lineStyle(2, 0xFFFFFF, 1);
+                    batteryData.badge.strokeCircle(
+                        batteryData.badgeText.x,
+                        batteryData.badgeText.y,
+                        badgeRadius
+                    );
+                }
+            });
+            
+            this.tweens.add({
+                targets: batteryData.levelText,
+                x: batteryData.originalX,
+                y: batteryData.originalY + 35,
+                duration: 200,
+                ease: 'Back.easeOut'
+            });
+        }
+        
+        addBatteryToSlotFromGrid(slotIndex, batteryData) {
+            // Remove from grid
+            this.removeBattery(batteryData);
+            
+            // Add to charging slot
+            this.addBatteryToSlot(slotIndex, batteryData.level);
+        }
+
+        createMergeEffect(x, y) {
+            // Particle burst effect
+            const circle = this.add.circle(x, y, 50, 0xFFFFFF, 0.8);
+            this.tweens.add({
+                targets: circle,
+                scaleX: 2,
+                scaleY: 2,
+                alpha: 0,
+                duration: 300,
+                onComplete: () => circle.destroy()
+            });
+        }
+
+        updateSpawnButton() {
+            // Update spawn button based on highest level
+            if (this.highestBatteryLevel >= 9) {
+                const newButtonLevel = this.highestBatteryLevel - 7; // 9->2, 10->3, 11->4
+                if (newButtonLevel > this.spawnButtonLevel) {
+                    this.spawnButtonLevel = newButtonLevel;
+                    this.spawnCost = newButtonLevel * 10;
+                    this.spawnButtonText.setText(`${this.spawnCost}`);
+                }
+            }
+            
+            // Disable button if not enough coins
+            if (this.coins < this.spawnCost) {
+                this.spawnButtonBg.setFillStyle(0x888888);
+                this.spawnButtonBg.disableInteractive();
+            } else {
+                this.spawnButtonBg.setFillStyle(0x4CAF50);
+                this.spawnButtonBg.setInteractive({ useHandCursor: true });
+            }
+        }
+
+        checkLevelUpTimer() {
+            if (!this.hasStartedPlaying) return;
+            
+            const currentTime = this.time.now;
+            
+            // If button is visible, check if 30 seconds have passed
+            if (this.levelUpButtonVisible && this.levelUpButtonShowTime) {
+                const elapsedVisible = currentTime - this.levelUpButtonShowTime;
+                if (elapsedVisible >= 30000) { // Hide after 30 seconds
+                    this.levelUpButton.setVisible(false);
+                    this.levelUpButtonVisible = false;
+                    this.levelUpButtonBg.setAlpha(0.5);
+                    // Start hidden period
+                    this.levelUpTimer = currentTime;
+                }
+            }
+            // If button is hidden, check if it's time to show it
+            else if (!this.levelUpButtonVisible && this.levelUpTimer) {
+                const elapsed = currentTime - this.levelUpTimer;
+                const waitTime = this.firstLevelUpTimer ? 20000 : 30000; // 20s first, then 30s
+                
+                if (elapsed >= waitTime) {
+                    this.levelUpButton.setVisible(true);
+                    this.levelUpButtonVisible = true;
+                    this.levelUpButtonBg.setAlpha(1);
+                    this.levelUpButtonShowTime = currentTime;
+                    this.firstLevelUpTimer = false; // After first time, use 30s
+                }
+            }
+        }
+
+        levelUpAll() {
+            // Log ad loading to console
+            console.log('loading ad');
+            
+            // Upgrade all batteries in grid
+            this.batteries.forEach(battery => {
+                if (battery.inGrid) {
+                    battery.level += 1;
+                    battery.badgeText.setText(battery.level.toString());
+                    battery.levelText.setText(`LVL ${battery.level}`);
+                    
+                    // Update highest level
+                    if (battery.level > this.highestBatteryLevel) {
+                        this.highestBatteryLevel = battery.level;
+                    }
+                }
+            });
+            
+            // Upgrade batteries in charging slots
+            for (let i = 0; i < 3; i++) {
+                if (this.chargingSlots[i] !== null) {
+                    const slot = this.chargingSlotsUI[i];
+                    const newLevel = this.chargingSlots[i].level + 1;
+                    
+                    // Update slot data
+                    this.chargingSlots[i].level = newLevel;
+                    this.chargingSlots[i].chargePerMinute = newLevel * 5;
+                    
+                    // Update UI
+                    slot.batteryBadgeText.setText(newLevel.toString());
+                    slot.batteryLevelText.setText(`LVL ${newLevel}`);
+                    slot.chargeText.setText(`${newLevel * 5}`);
+                }
+            }
+            
+            // Update spawn button
+            this.updateSpawnButton();
+            
+            // Hide button and reset timer
+            this.levelUpButton.setVisible(false);
+            this.levelUpButtonVisible = false;
+            this.levelUpButtonBg.setAlpha(0.5);
+            this.levelUpTimer = this.time.now;
+        }
+
+        updateCoinDisplay() {
+            this.coinText.setText(`${this.coins}`);
+            this.updateSpawnButton();
+        }
     }
 
     const config = {
         type: Phaser.AUTO,
         parent: 'game-container',
         backgroundColor: '#87CEEB',
-        scene: [VehicleScene, MergeScene],
+        scene: [GameScene],
         
         physics: {
             default: 'matter',
@@ -737,20 +1571,7 @@
         },
     };
 
-    // Only create game instance if this is the main script
+    // Create game instance
     if (typeof window !== 'undefined' && !window.__LEVEL_VIEWER__) {
         const game = new Phaser.Game(config);
-        
-        // Wait for game to be ready, then configure the split layout
-        game.events.once('ready', () => {
-            // Start both scenes
-            const vehicleScene = game.scene.start('VehicleScene');
-            const mergeScene = game.scene.start('MergeScene');
-            
-            // Set up scene cameras for split layout (portrait mode)
-            // Top half: VehicleScene (640px height)
-            // Bottom half: MergeScene (640px height)
-            game.scene.getScene('VehicleScene').cameras.main.setViewport(0, 0, 720, 640);
-            game.scene.getScene('MergeScene').cameras.main.setViewport(0, 640, 720, 640);
-        });
     }
