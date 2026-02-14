@@ -114,5 +114,13 @@ var CONFIG = {
         ANIMATION_DURATION: 500,       // Duration of one click animation in milliseconds
         ANIMATION_YOYO: true,          // Animation returns to start
         ANIMATION_REPEAT: -1           // Repeat indefinitely (-1)
+    },
+    
+    // Merge tutorial animation settings
+    MERGE_TUTORIAL: {
+        POINTER_OFFSET_Y: 50,          // Pixels below cell center where top of pointer appears
+        ANIMATION_DURATION: 1000,      // Duration for pointer to move from cell 1 to cell 2
+        ANIMATION_REPEAT: -1,          // Repeat indefinitely
+        ANIMATION_EASE: 'Sine.easeInOut' // Easing function for smooth movement
     }
 };

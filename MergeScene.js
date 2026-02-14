@@ -18,6 +18,8 @@ class MergeScene extends Phaser.Scene {
         this.levelUpButtonVisible = false;
         this.levelUpButtonShowTime = null;
         this.firstLevelUpTimer = true;
+        this.mergeTutorialShown = false;    // Track if merge tutorial has been shown
+        this.mergeOverlay = null;           // Reference to merge tutorial overlay
         
         // Grid layout constants
         this.GRID_START_Y = 100;
@@ -209,7 +211,7 @@ class MergeScene extends Phaser.Scene {
         const sceneWidth = this.cameras.main.width;
         const sceneHeight = this.cameras.main.height;
         
-        // Semi-transparent overlay
+        // Create overlay in MergeScene (bottom half)
         this.startOverlay = this.add.rectangle(
             sceneWidth / 2,
             sceneHeight / 2,
@@ -219,26 +221,17 @@ class MergeScene extends Phaser.Scene {
             0.6
         );
         
-        // Highlight spawn button with pulsing effect
-        // const highlight = this.add.rectangle(
-        //     this.spawnButton.x,
-        //     this.spawnButton.y,
-        //     220,
-        //     90,
-        //     0xFFFF00,
-        //     0
-        // );
-        // highlight.setStrokeStyle(5, 0xFFFF00);
-        
-        // this.tweens.add({
-        //     targets: highlight,
-        //     alpha: 0.8,
-        //     scaleX: 1.1,
-        //     scaleY: 1.1,
-        //     duration: 800,
-        //     yoyo: true,
-        //     repeat: -1
-        // });
+        // Create overlay in VehicleScene (top half)
+        const vehicleScene = this.scene.get('VehicleScene');
+        this.startOverlayVehicle = vehicleScene.add.rectangle(
+            sceneWidth / 2,
+            sceneHeight / 2,
+            sceneWidth,
+            sceneHeight,
+            0x000000,
+            0.6
+        );
+        this.startOverlayVehicle.setDepth(100);
         
         // Animated pointer (point.png) positioned below button center
         const pointerY = this.spawnButton.y + CONFIG.POINTER.OFFSET_Y;
@@ -262,25 +255,119 @@ class MergeScene extends Phaser.Scene {
             repeat: CONFIG.POINTER.ANIMATION_REPEAT
         });
         
+        // Set depths: overlay behind button, pointer on top of everything
         this.startOverlay.setDepth(100);
-        // highlight.setDepth(101);
-        pointer.setDepth(102);
+        this.spawnButton.setDepth(101);  // Button visible above overlay
+        pointer.setDepth(102);            // Pointer on top
         
-        // this.startHighlight = highlight;
         this.startPointer = pointer;
     }
 
     removeStartOverlay() {
         if (this.startOverlay) {
             this.startOverlay.destroy();
-            // this.startHighlight.destroy();
             this.startPointer.destroy();
+            if (this.startOverlayVehicle) {
+                this.startOverlayVehicle.destroy();
+            }
             this.startOverlay = null;
             this.hasStartedPlaying = true;
             
             // Start level-up timer (20 seconds for first appearance)
             this.levelUpTimer = this.time.now;
             this.firstLevelUpTimer = true;
+        }
+    }
+    
+    checkAndShowMergeTutorial() {
+        // Show merge tutorial when second battery is spawned
+        if (!this.mergeTutorialShown && this.batteries.length === 2 && !this.mergeOverlay) {
+            this.mergeTutorialShown = true;
+            this.createMergeTutorial();
+        }
+    }
+    
+    createMergeTutorial() {
+        const sceneWidth = this.cameras.main.width;
+        const sceneHeight = this.cameras.main.height;
+        
+        // Create overlay in MergeScene (bottom half)
+        this.mergeOverlay = this.add.rectangle(
+            sceneWidth / 2,
+            sceneHeight / 2,
+            sceneWidth,
+            sceneHeight,
+            0x000000,
+            0.6
+        );
+        
+        // Create overlay in VehicleScene (top half)
+        const vehicleScene = this.scene.get('VehicleScene');
+        this.mergeOverlayVehicle = vehicleScene.add.rectangle(
+            sceneWidth / 2,
+            sceneHeight / 2,
+            sceneWidth,
+            sceneHeight,
+            0x000000,
+            0.6
+        );
+        this.mergeOverlayVehicle.setDepth(100);
+        
+        // Get positions of first two cells (0,0) and (0,1)
+        const cell1X = this.gridStartX;
+        const cell1Y = this.GRID_START_Y;
+        const cell2X = this.gridStartX + (this.CELL_SIZE + this.CELL_GAP);
+        const cell2Y = this.GRID_START_Y;
+        
+        // Create pointer positioned below the first cell center
+        const pointerStartY = cell1Y + CONFIG.MERGE_TUTORIAL.POINTER_OFFSET_Y;
+        const mergePointer = this.add.image(
+            cell1X,
+            pointerStartY,
+            'point'
+        );
+        mergePointer.setScale(CONFIG.POINTER.SCALE);
+        mergePointer.setTint(CONFIG.POINTER.TINT);
+        mergePointer.setOrigin(0.5, 0);  // Origin at top center
+        
+        // Animate pointer from cell 1 to cell 2 horizontally
+        this.tweens.add({
+            targets: mergePointer,
+            x: cell2X,
+            duration: CONFIG.MERGE_TUTORIAL.ANIMATION_DURATION,
+            ease: CONFIG.MERGE_TUTORIAL.ANIMATION_EASE,
+            yoyo: true,
+            repeat: CONFIG.MERGE_TUTORIAL.ANIMATION_REPEAT
+        });
+        
+        // Set depths
+        this.mergeOverlay.setDepth(100);
+        // Set depth for grid cells
+        this.gridCells.forEach(row => row.forEach(cellData => {
+            cellData.cell.setDepth(101);
+            cellData.filledBg.setDepth(101);
+        }));
+        this.batteries.forEach(battery => battery.sprite.setDepth(101));
+        mergePointer.setDepth(102);
+        
+        this.mergePointer = mergePointer;
+    }
+    
+    removeMergeTutorial() {
+        if (this.mergeOverlay) {
+            this.mergeOverlay.destroy();
+            this.mergePointer.destroy();
+            if (this.mergeOverlayVehicle) {
+                this.mergeOverlayVehicle.destroy();
+            }
+            this.mergeOverlay = null;
+            
+            // Reset depths
+            this.gridCells.forEach(row => row.forEach(cellData => {
+                cellData.cell.setDepth(0);
+                cellData.filledBg.setDepth(0);
+            }));
+            this.batteries.forEach(battery => battery.sprite.setDepth(10));
         }
     }
 
@@ -303,8 +390,8 @@ class MergeScene extends Phaser.Scene {
             if (emptyCell) break;
         }
         
+        // Simply don't spawn if grid is full (no message)
         if (!emptyCell) {
-            this.showMessage('Grid is full!');
             return;
         }
         
@@ -319,6 +406,9 @@ class MergeScene extends Phaser.Scene {
         if (this.startOverlay) {
             this.removeStartOverlay();
         }
+        
+        // Check if we should show merge tutorial
+        this.checkAndShowMergeTutorial();
         
         // Update spawn button state
         this.updateSpawnButton();
@@ -412,6 +502,11 @@ class MergeScene extends Phaser.Scene {
         // Remove start overlay on first drag
         if (this.startOverlay) {
             this.removeStartOverlay();
+        }
+        
+        // Remove merge tutorial overlay on first drag
+        if (this.mergeOverlay) {
+            this.removeMergeTutorial();
         }
     }
 
