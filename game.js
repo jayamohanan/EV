@@ -65,6 +65,9 @@
             this.load.image('coin', 'graphics/coin.png');
             this.load.image('point', 'graphics/point.png');
             
+            // Load charging effect
+            this.load.image('bolt', 'graphics/bolt_64.png');
+            
             // Load engine sound
             this.load.audio('car_idle', 'sounds/car_idle.wav');
         }
@@ -303,6 +306,20 @@
             // Create battery sprite in slot
             const batterySprite = this.add.image(slot.x, slot.y, 'battery').setScale(0.6);
             
+            // Make battery draggable
+            const hitArea = new Phaser.Geom.Rectangle(
+                -50,
+                -50,
+                100,
+                100
+            );
+            batterySprite.setInteractive({
+                hitArea: hitArea,
+                hitAreaCallback: Phaser.Geom.Rectangle.Contains,
+                draggable: true,
+                useHandCursor: true
+            });
+            
             // Add level badge
             const badgeRadius = 18;
             const badgeX = slot.x - 60 + badgeRadius + 5;
@@ -340,9 +357,26 @@
             slot.batteryBadgeText = badgeText;
             slot.batteryLevelText = levelText;
             
+            // Create battery data object
+            const batteryData = {
+                sprite: batterySprite,
+                badge: badge,
+                badgeText: badgeText,
+                levelText: levelText,
+                level: level,
+                slotIndex: slotIndex,
+                originalX: slot.x,
+                originalY: slot.y,
+                inGrid: false,
+                inChargingSlot: true
+            };
+            
+            batterySprite.setData('batteryData', batteryData);
+            
             this.chargingSlots[slotIndex] = {
                 level: level,
-                chargePerMinute: chargePerMinute
+                chargePerMinute: chargePerMinute,
+                batteryData: batteryData
             };
             
             // Start charging if this is the first battery
@@ -448,15 +482,21 @@
             // Update UI
             this.updateChargeBar();
             
-            // Car scale animation (slight pulse, 5% scale up)
+            // Lightning bolt animation at car center
             if (this.vehicle && this.chassisSprite) {
+                const bolt = this.add.image(this.chassisSprite.x, this.chassisSprite.y, 'bolt');
+                bolt.setScale(CONFIG.LIGHTNING_BOLT.SCALE_START);
+                bolt.setAlpha(CONFIG.LIGHTNING_BOLT.ALPHA_START);
+                bolt.setDepth(50); // Above car
+                
                 this.tweens.add({
-                    targets: [this.chassisSprite, this.rearWheelSprite, this.frontWheelSprite],
-                    scaleX: 1.05,
-                    scaleY: 1.05,
-                    duration: 100,
-                    yoyo: true,
-                    ease: 'Sine.easeInOut'
+                    targets: bolt,
+                    scaleX: CONFIG.LIGHTNING_BOLT.SCALE_END,
+                    scaleY: CONFIG.LIGHTNING_BOLT.SCALE_END,
+                    alpha: CONFIG.LIGHTNING_BOLT.ALPHA_END,
+                    duration: CONFIG.LIGHTNING_BOLT.DURATION,
+                    ease: 'Sine.easeOut',
+                    onComplete: () => bolt.destroy()
                 });
             }
         }
@@ -1166,7 +1206,7 @@
             batteryData.badgeText.setPosition(dragX + offsetX, dragY + offsetY);
             batteryData.levelText.setPosition(dragX, dragY + 35);
             
-            // Check if battery left original cell
+            // Check if battery left original cell (for grid items)
             if (batteryData.inGrid) {
                 const cellData = this.gridCells[batteryData.row][batteryData.col];
                 const bounds = new Phaser.Geom.Rectangle(
@@ -1180,6 +1220,23 @@
                     cellData.filledBg.setVisible(false);
                 } else {
                     cellData.filledBg.setVisible(true);
+                }
+            }
+            
+            // Check if battery left original charging slot
+            if (batteryData.inChargingSlot) {
+                const slot = this.chargingSlotsUI[batteryData.slotIndex];
+                const bounds = new Phaser.Geom.Rectangle(
+                    slot.x - 50,
+                    slot.y - 50,
+                    100,
+                    100
+                );
+                
+                if (!Phaser.Geom.Rectangle.Contains(bounds, dragX, dragY)) {
+                    slot.slotFilledBg.setVisible(false);
+                } else {
+                    slot.slotFilledBg.setVisible(true);
                 }
             }
         }
@@ -1203,12 +1260,10 @@
                 );
                 
                 if (Phaser.Geom.Rectangle.Contains(bounds, dropX, dropY)) {
-                    // Try to add battery to charging slot
-                    if (this.chargingSlots[i] === null) {
-                        this.addBatteryToSlotFromGrid(i, batteryData);
-                        droppedOnChargingSlot = true;
-                        break;
-                    }
+                    // Handle drop on charging slot
+                    this.handleDropOnChargingSlot(i, batteryData);
+                    droppedOnChargingSlot = true;
+                    break;
                 }
             }
             
@@ -1244,6 +1299,24 @@
             this.draggingBattery = null;
         }
 
+        handleDropOnChargingSlot(slotIndex, batteryData) {
+            const targetSlotData = this.chargingSlots[slotIndex];
+            
+            if (targetSlotData === null) {
+                // Empty slot - move battery to slot
+                this.moveBatteryToChargingSlot(batteryData, slotIndex);
+            } else if (batteryData.inChargingSlot && batteryData.slotIndex === slotIndex) {
+                // Same slot - return to position
+                this.returnBatteryToPosition(batteryData);
+            } else if (targetSlotData.batteryData.level === batteryData.level) {
+                // Same level - merge in charging slot
+                this.mergeBatteriesInChargingSlot(batteryData, targetSlotData.batteryData, slotIndex);
+            } else {
+                // Different level - swap
+                this.swapBatteryWithChargingSlot(batteryData, targetSlotData.batteryData, slotIndex);
+            }
+        }
+
         handleDrop(batteryData, targetCell) {
             const targetBattery = this.grid[targetCell.row][targetCell.col];
             
@@ -1268,12 +1341,30 @@
                 this.grid[batteryData.row][batteryData.col] = null;
                 this.gridCells[batteryData.row][batteryData.col].filledBg.setVisible(false);
                 this.gridCells[batteryData.row][batteryData.col].isEmpty = true;
+            } else if (batteryData.inChargingSlot) {
+                // Remove from charging slot
+                this.chargingSlots[batteryData.slotIndex] = null;
+                const slot = this.chargingSlotsUI[batteryData.slotIndex];
+                slot.slotFilledBg.setVisible(false);
+                slot.chargeText.setVisible(false);
+                slot.batterySprite = null;
+                slot.batteryBadge = null;
+                slot.batteryBadgeText = null;
+                slot.batteryLevelText = null;
+                this.updateChargingSystem();
             }
             
             // Update position
             batteryData.row = newRow;
             batteryData.col = newCol;
+            batteryData.inGrid = true;
+            batteryData.inChargingSlot = false;
             this.grid[newRow][newCol] = batteryData;
+            
+            // Add to batteries array if not already there
+            if (!this.batteries.includes(batteryData)) {
+                this.batteries.push(batteryData);
+            }
             
             const cellData = this.gridCells[newRow][newCol];
             batteryData.originalX = cellData.x;
@@ -1339,12 +1430,176 @@
             this.returnBatteryToPosition(battery2);
         }
 
+        moveBatteryToChargingSlot(batteryData, slotIndex) {
+            // Clear old position
+            if (batteryData.inGrid) {
+                this.removeBattery(batteryData);
+            } else if (batteryData.inChargingSlot) {
+                // Remove from old charging slot
+                this.chargingSlots[batteryData.slotIndex] = null;
+                const oldSlot = this.chargingSlotsUI[batteryData.slotIndex];
+                oldSlot.slotFilledBg.setVisible(false);
+                oldSlot.chargeText.setVisible(false);
+                oldSlot.batterySprite = null;
+                oldSlot.batteryBadge = null;
+                oldSlot.batteryBadgeText = null;
+                oldSlot.batteryLevelText = null;
+            }
+            
+            // Add to new charging slot
+            this.addBatteryToSlot(slotIndex, batteryData.level);
+        }
+
+        swapBatteryWithChargingSlot(battery1, battery2, slotIndex) {
+            // battery1 is being dragged, battery2 is in charging slot at slotIndex
+            
+            if (battery1.inGrid) {
+                // Swap grid battery with charging slot battery
+                const row1 = battery1.row;
+                const col1 = battery1.col;
+                
+                // Remove battery1 from grid
+                this.removeBattery(battery1);
+                
+                // Move battery2 from charging slot to grid
+                this.chargingSlots[slotIndex] = null;
+                const slot = this.chargingSlotsUI[slotIndex];
+                slot.slotFilledBg.setVisible(false);
+                slot.chargeText.setVisible(false);
+                slot.batterySprite = null;
+                slot.batteryBadge = null;
+                slot.batteryBadgeText = null;
+                slot.batteryLevelText = null;
+                
+                battery2.inChargingSlot = false;
+                battery2.inGrid = true;
+                battery2.row = row1;
+                battery2.col = col1;
+                battery2.originalX = this.gridCells[row1][col1].x;
+                battery2.originalY = this.gridCells[row1][col1].y;
+                this.grid[row1][col1] = battery2;
+                this.batteries.push(battery2);
+                this.gridCells[row1][col1].filledBg.setVisible(true);
+                this.returnBatteryToPosition(battery2);
+                
+                // Add battery1 to charging slot
+                this.addBatteryToSlot(slotIndex, battery1.level);
+                
+            } else if (battery1.inChargingSlot) {
+                // Swap two charging slot batteries
+                const slot1Index = battery1.slotIndex;
+                const slot2Index = slotIndex;
+                
+                const slot1 = this.chargingSlotsUI[slot1Index];
+                const slot2 = this.chargingSlotsUI[slot2Index];
+                
+                const level1 = battery1.level;
+                const level2 = battery2.level;
+                
+                // Clear both slots
+                this.chargingSlots[slot1Index] = null;
+                this.chargingSlots[slot2Index] = null;
+                
+                slot1.batterySprite.destroy();
+                slot1.batteryBadge.destroy();
+                slot1.batteryBadgeText.destroy();
+                slot1.batteryLevelText.destroy();
+                slot1.slotFilledBg.setVisible(false);
+                slot1.chargeText.setVisible(false);
+                
+                slot2.batterySprite.destroy();
+                slot2.batteryBadge.destroy();
+                slot2.batteryBadgeText.destroy();
+                slot2.batteryLevelText.destroy();
+                slot2.slotFilledBg.setVisible(false);
+                slot2.chargeText.setVisible(false);
+                
+                // Add swapped batteries
+                this.addBatteryToSlot(slot1Index, level2);
+                this.addBatteryToSlot(slot2Index, level1);
+            }
+            
+            this.updateChargingSystem();
+        }
+
+        mergeBatteriesInChargingSlot(draggedBattery, targetBattery, targetSlotIndex) {
+            // Remove merge tutorial animation on first merge
+            if (this.mergePointer) {
+                this.removeMergeTutorial();
+            }
+            
+            // Remove dragged battery
+            if (draggedBattery.inGrid) {
+                this.removeBattery(draggedBattery);
+            } else if (draggedBattery.inChargingSlot) {
+                this.chargingSlots[draggedBattery.slotIndex] = null;
+                const slot = this.chargingSlotsUI[draggedBattery.slotIndex];
+                slot.batterySprite.destroy();
+                slot.batteryBadge.destroy();
+                slot.batteryBadgeText.destroy();
+                slot.batteryLevelText.destroy();
+                slot.slotFilledBg.setVisible(false);
+                slot.chargeText.setVisible(false);
+                slot.batterySprite = null;
+                slot.batteryBadge = null;
+                slot.batteryBadgeText = null;
+                slot.batteryLevelText = null;
+                
+                draggedBattery.sprite.destroy();
+                draggedBattery.badge.destroy();
+                draggedBattery.badgeText.destroy();
+                draggedBattery.levelText.destroy();
+            }
+            
+            // Remove target battery from charging slot
+            this.chargingSlots[targetSlotIndex] = null;
+            const targetSlot = this.chargingSlotsUI[targetSlotIndex];
+            targetSlot.batterySprite.destroy();
+            targetSlot.batteryBadge.destroy();
+            targetSlot.batteryBadgeText.destroy();
+            targetSlot.batteryLevelText.destroy();
+            targetSlot.slotFilledBg.setVisible(false);
+            targetSlot.chargeText.setVisible(false);
+            targetSlot.batterySprite = null;
+            targetSlot.batteryBadge = null;
+            targetSlot.batteryBadgeText = null;
+            targetSlot.batteryLevelText = null;
+            
+            // Create new battery at target slot with level + 1
+            const newLevel = targetBattery.level + 1;
+            this.addBatteryToSlot(targetSlotIndex, newLevel);
+            
+            // Update highest level
+            if (newLevel > this.highestBatteryLevel) {
+                this.highestBatteryLevel = newLevel;
+                this.updateSpawnButton();
+            }
+            
+            // Merge animation effect
+            this.createMergeEffect(targetSlot.x, targetSlot.y);
+            
+            this.updateChargingSystem();
+        }
+
         removeBattery(batteryData) {
             // Remove from grid
             if (batteryData.inGrid) {
                 this.grid[batteryData.row][batteryData.col] = null;
                 this.gridCells[batteryData.row][batteryData.col].filledBg.setVisible(false);
                 this.gridCells[batteryData.row][batteryData.col].isEmpty = true;
+            }
+            
+            // Remove from charging slot
+            if (batteryData.inChargingSlot) {
+                this.chargingSlots[batteryData.slotIndex] = null;
+                const slot = this.chargingSlotsUI[batteryData.slotIndex];
+                slot.slotFilledBg.setVisible(false);
+                slot.chargeText.setVisible(false);
+                slot.batterySprite = null;
+                slot.batteryBadge = null;
+                slot.batteryBadgeText = null;
+                slot.batteryLevelText = null;
+                this.updateChargingSystem();
             }
             
             // Remove from batteries array
@@ -1411,14 +1666,6 @@
             });
         }
         
-        addBatteryToSlotFromGrid(slotIndex, batteryData) {
-            // Remove from grid
-            this.removeBattery(batteryData);
-            
-            // Add to charging slot
-            this.addBatteryToSlot(slotIndex, batteryData.level);
-        }
-
         createMergeEffect(x, y) {
             // Particle burst effect
             const circle = this.add.circle(x, y, 50, 0xFFFFFF, 0.8);
@@ -1465,6 +1712,9 @@
                     this.levelUpButton.setVisible(false);
                     this.levelUpButtonVisible = false;
                     this.levelUpButtonBg.setAlpha(0.5);
+                    // Stop pulse animation
+                    this.tweens.killTweensOf(this.levelUpButton);
+                    this.levelUpButton.setScale(1); // Reset scale
                     // Start hidden period
                     this.levelUpTimer = currentTime;
                 }
@@ -1480,6 +1730,17 @@
                     this.levelUpButtonBg.setAlpha(1);
                     this.levelUpButtonShowTime = currentTime;
                     this.firstLevelUpTimer = false; // After first time, use 30s
+                    
+                    // Start pulse animation (scale up and down by 10%)
+                    this.tweens.add({
+                        targets: this.levelUpButton,
+                        scaleX: 1.05,
+                        scaleY: 1.05,
+                        duration: 300,
+                        yoyo: true,
+                        repeat: -1,
+                        ease: 'Sine.easeInOut'
+                    });
                 }
             }
         }
@@ -1506,11 +1767,17 @@
             for (let i = 0; i < 3; i++) {
                 if (this.chargingSlots[i] !== null) {
                     const slot = this.chargingSlotsUI[i];
-                    const newLevel = this.chargingSlots[i].level + 1;
+                    const slotData = this.chargingSlots[i];
+                    const newLevel = slotData.level + 1;
                     
                     // Update slot data
-                    this.chargingSlots[i].level = newLevel;
-                    this.chargingSlots[i].chargePerMinute = newLevel * 5;
+                    slotData.level = newLevel;
+                    slotData.chargePerMinute = newLevel * 5;
+                    
+                    // Update batteryData if it exists
+                    if (slotData.batteryData) {
+                        slotData.batteryData.level = newLevel;
+                    }
                     
                     // Update UI
                     slot.batteryBadgeText.setText(newLevel.toString());
@@ -1523,6 +1790,9 @@
             this.updateSpawnButton();
             
             // Hide button and reset timer
+            // Stop pulse animation
+            this.tweens.killTweensOf(this.levelUpButton);
+            this.levelUpButton.setScale(1); // Reset scale
             this.levelUpButton.setVisible(false);
             this.levelUpButtonVisible = false;
             this.levelUpButtonBg.setAlpha(0.5);

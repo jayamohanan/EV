@@ -122,5 +122,14 @@ var CONFIG = {
         ANIMATION_DURATION: 1000,      // Duration for pointer to move from cell 1 to cell 2
         ANIMATION_REPEAT: -1,          // Repeat indefinitely
         ANIMATION_EASE: 'Sine.easeInOut' // Easing function for smooth movement
+    },
+    
+    // Lightning bolt charging effect settings
+    LIGHTNING_BOLT: {
+        SCALE_START: 0.5,              // Starting scale (relative to bolt.png size)
+        SCALE_END: 1.5,                // Ending scale (relative to bolt.png size)
+        ALPHA_START: 1,                // Starting transparency (0-1, 1 = opaque)
+        ALPHA_END: 0,                  // Ending transparency (0-1, 0 = invisible)
+        DURATION: 600                  // Animation duration in milliseconds
     }
 };
