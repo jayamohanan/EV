@@ -5,6 +5,25 @@ var CONFIG = {
     
     RESET_PROGRESS: false,         // Set to true to clear saved progress on load
     
+    // Grid Cell Configuration
+    CELL: {
+        SIZE: 100,                      // Cell width and height in pixels
+        GAP: 15,                        // Gap between cells
+        RADIUS: 15,                     // Rounded corner radius
+        BORDER_COLOR: 0xBBDDEE,        // Empty cell border color
+        BORDER_WIDTH: 3,                // Border width
+        FILLED_BG_COLOR: 0xFFFFFF,     // Background color when cell has a battery
+        
+        // Battery icon configuration
+        BATTERY_SCALE: 1.0,            // Battery icon scale (1.0 = full size, 64px)
+        BATTERY_Y_OFFSET: 5,           // Vertical offset from cell center (positive = down)
+        
+        // Level text configuration
+        LEVEL_TEXT_SIZE: '11px',       // Font size for "LVL n" text
+        LEVEL_TEXT_COLOR: '#000000',   // Text color (black)
+        LEVEL_TEXT_Y_OFFSET: -40,      // Offset from battery center (negative = above)
+    },
+    
     // Vehicle Physics Config
     VEHICLE: {
         CHASSIS_WIDTH: 120,

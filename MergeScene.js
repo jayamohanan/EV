@@ -21,17 +21,21 @@ class MergeScene extends Phaser.Scene {
         this.mergeTutorialShown = false;    // Track if merge tutorial has been shown
         this.mergeOverlay = null;           // Reference to merge tutorial overlay
         
-        // Grid layout constants
+        // Grid layout constants (can be overridden by CONFIG.CELL)
         this.GRID_START_Y = 100;
-        this.CELL_SIZE = 100;
-        this.CELL_GAP = 15;
-        this.CELL_RADIUS = 15;
+        this.CELL_SIZE = CONFIG.CELL.SIZE;
+        this.CELL_GAP = CONFIG.CELL.GAP;
+        this.CELL_RADIUS = CONFIG.CELL.RADIUS;
         this.GRID_COLS = 3;
         this.GRID_ROWS = 3;
     }
 
     preload() {
-        this.load.image('battery', 'graphics/battery.png');
+        this.load.image('battery1', 'graphics/Battery1.svg');
+        this.load.image('battery2', 'graphics/Battery2.svg');
+        this.load.image('battery3', 'graphics/Battery3.svg');
+        this.load.image('battery4', 'graphics/Battery4.svg');
+        this.load.image('battery5', 'graphics/Battery5.svg');
         this.load.image('coin', 'graphics/coin.png');
         this.load.image('point', 'graphics/point.png');
     }
@@ -99,7 +103,7 @@ class MergeScene extends Phaser.Scene {
                 
                 // Empty cell background (rounded rectangle)
                 const cell = this.add.graphics();
-                cell.lineStyle(3, 0xBBDDEE, 1);
+                cell.lineStyle(CONFIG.CELL.BORDER_WIDTH, CONFIG.CELL.BORDER_COLOR, 1);
                 cell.strokeRoundedRect(
                     x - this.CELL_SIZE / 2,
                     y - this.CELL_SIZE / 2,
@@ -110,7 +114,7 @@ class MergeScene extends Phaser.Scene {
                 
                 // Filled cell background (hidden initially)
                 const filledBg = this.add.graphics();
-                filledBg.fillStyle(0xA8D8EA, 1);
+                filledBg.fillStyle(CONFIG.CELL.FILLED_BG_COLOR, 1);
                 filledBg.fillRoundedRect(
                     x - this.CELL_SIZE / 2,
                     y - this.CELL_SIZE / 2,
@@ -146,7 +150,7 @@ class MergeScene extends Phaser.Scene {
         spawnBg.setInteractive({ useHandCursor: true });
         
         // Battery icon on button
-        const spawnIcon = this.add.image(-60, 0, 'battery').setScale(0.4);
+        const spawnIcon = this.add.image(-60, 0, 'battery1').setScale(0.4);
         
         this.spawnButtonText = this.add.text(15, 0, `10`, {
             fontSize: '24px',
@@ -417,9 +421,13 @@ class MergeScene extends Phaser.Scene {
     spawnBatteryInGrid(row, col, level) {
         const cellData = this.gridCells[row][col];
         
+        // Determine which battery icon to use (cap at battery5 for levels > 5)
+        const batteryIconLevel = Math.min(level, 5);
+        const batteryIcon = `battery${batteryIconLevel}`;
+        
         // Create battery sprite
-        const battery = this.add.image(cellData.x, cellData.y, 'battery');
-        battery.setScale(0.6);
+        const battery = this.add.image(cellData.x, cellData.y + CONFIG.CELL.BATTERY_Y_OFFSET, batteryIcon);
+        battery.setScale(CONFIG.CELL.BATTERY_SCALE);
         
         // Create invisible hit area covering entire cell for dragging
         const hitArea = new Phaser.Geom.Rectangle(
@@ -435,42 +443,27 @@ class MergeScene extends Phaser.Scene {
             useHandCursor: true
         });
         
-        // Add level badge (circle with number on bottom left)
-        const badgeRadius = 18;
-        const badgeX = cellData.x - this.CELL_SIZE / 2 + badgeRadius + 5;
-        const badgeY = cellData.y + this.CELL_SIZE / 2 - badgeRadius - 5;
-        
-        const badge = this.add.graphics();
-        badge.fillStyle(0xFF6B6B, 1);
-        badge.fillCircle(badgeX, badgeY, badgeRadius);
-        badge.lineStyle(2, 0xFFFFFF, 1);
-        badge.strokeCircle(badgeX, badgeY, badgeRadius);
-        
-        const badgeText = this.add.text(badgeX, badgeY, level.toString(), {
-            fontSize: '20px',
-            fontFamily: CONFIG.FONT_FAMILY,
-            color: '#FFFFFF',
-            fontStyle: 'bold'
-        }).setOrigin(0.5);
-        
-        // Add level text below battery
-        const levelText = this.add.text(cellData.x, cellData.y + 35, `LVL ${level}`, {
-            fontSize: '16px',
-            fontFamily: CONFIG.FONT_FAMILY,
-            color: '#333333',
-            fontStyle: 'bold'
-        }).setOrigin(0.5);
+        // Add level text at top of battery
+        const levelText = this.add.text(
+            cellData.x, 
+            cellData.y + CONFIG.CELL.BATTERY_Y_OFFSET + CONFIG.CELL.LEVEL_TEXT_Y_OFFSET, 
+            `LVL ${level}`, 
+            {
+                fontSize: CONFIG.CELL.LEVEL_TEXT_SIZE,
+                fontFamily: CONFIG.FONT_FAMILY,
+                color: CONFIG.CELL.LEVEL_TEXT_COLOR,
+                fontStyle: 'bold'
+            }
+        ).setOrigin(0.5);
         
         const batteryData = {
             sprite: battery,
-            badge: badge,
-            badgeText: badgeText,
             levelText: levelText,
             level: level,
             row: row,
             col: col,
             originalX: cellData.x,
-            originalY: cellData.y,
+            originalY: cellData.y + CONFIG.CELL.BATTERY_Y_OFFSET,
             inGrid: true,
             inChargingSlot: false
         };
@@ -495,9 +488,7 @@ class MergeScene extends Phaser.Scene {
         
         // Bring to front with very high depth (above both scenes)
         batteryData.sprite.setDepth(10000);
-        batteryData.badge.setDepth(10001);
-        batteryData.badgeText.setDepth(10002);
-        batteryData.levelText.setDepth(10003);
+        batteryData.levelText.setDepth(10001);
         
         // Remove start overlay on first drag
         if (this.startOverlay) {
@@ -518,19 +509,7 @@ class MergeScene extends Phaser.Scene {
         // Move battery and its UI elements
         batteryData.sprite.x = dragX;
         batteryData.sprite.y = dragY;
-        
-        const badgeRadius = 18;
-        const offsetX = -this.CELL_SIZE / 2 + badgeRadius + 5;
-        const offsetY = this.CELL_SIZE / 2 - badgeRadius - 5;
-        
-        batteryData.badge.clear();
-        batteryData.badge.fillStyle(0xFF6B6B, 1);
-        batteryData.badge.fillCircle(dragX + offsetX, dragY + offsetY, badgeRadius);
-        batteryData.badge.lineStyle(2, 0xFFFFFF, 1);
-        batteryData.badge.strokeCircle(dragX + offsetX, dragY + offsetY, badgeRadius);
-        
-        batteryData.badgeText.setPosition(dragX + offsetX, dragY + offsetY);
-        batteryData.levelText.setPosition(dragX, dragY + 35);
+        batteryData.levelText.setPosition(dragX, dragY + CONFIG.CELL.LEVEL_TEXT_Y_OFFSET);
         
         // Check if battery left original cell
         if (batteryData.inGrid) {
@@ -620,7 +599,7 @@ class MergeScene extends Phaser.Scene {
         
         const cellData = this.gridCells[newRow][newCol];
         batteryData.originalX = cellData.x;
-        batteryData.originalY = cellData.y;
+        batteryData.originalY = cellData.y + CONFIG.CELL.BATTERY_Y_OFFSET;
         
         // Animate to new position
         this.returnBatteryToPosition(batteryData);
@@ -665,12 +644,12 @@ class MergeScene extends Phaser.Scene {
         battery1.row = row2;
         battery1.col = col2;
         battery1.originalX = this.gridCells[row2][col2].x;
-        battery1.originalY = this.gridCells[row2][col2].y;
+        battery1.originalY = this.gridCells[row2][col2].y + CONFIG.CELL.BATTERY_Y_OFFSET;
         
         battery2.row = row1;
         battery2.col = col1;
         battery2.originalX = this.gridCells[row1][col1].x;
-        battery2.originalY = this.gridCells[row1][col1].y;
+        battery2.originalY = this.gridCells[row1][col1].y + CONFIG.CELL.BATTERY_Y_OFFSET;
         
         // Animate both
         this.returnBatteryToPosition(battery1);
@@ -693,16 +672,18 @@ class MergeScene extends Phaser.Scene {
         
         // Destroy sprites
         batteryData.sprite.destroy();
-        batteryData.badge.destroy();
-        batteryData.badgeText.destroy();
         batteryData.levelText.destroy();
     }
 
     returnBatteryToPosition(batteryData) {
         batteryData.sprite.setDepth(0);
-        batteryData.badge.setDepth(1);
-        batteryData.badgeText.setDepth(2);
-        batteryData.levelText.setDepth(3);
+        batteryData.levelText.setDepth(1);
+        
+        // If battery is in grid, ensure background is visible
+        if (batteryData.inGrid) {
+            this.gridCells[batteryData.row][batteryData.col].filledBg.setVisible(true);
+            this.gridCells[batteryData.row][batteryData.col].isEmpty = false;
+        }
         
         // Animate back to original position
         this.tweens.add({
@@ -713,37 +694,10 @@ class MergeScene extends Phaser.Scene {
             ease: 'Back.easeOut'
         });
         
-        const badgeRadius = 18;
-        const offsetX = -this.CELL_SIZE / 2 + badgeRadius + 5;
-        const offsetY = this.CELL_SIZE / 2 - badgeRadius - 5;
-        
-        this.tweens.add({
-            targets: batteryData.badgeText,
-            x: batteryData.originalX + offsetX,
-            y: batteryData.originalY + offsetY,
-            duration: 200,
-            ease: 'Back.easeOut',
-            onUpdate: () => {
-                batteryData.badge.clear();
-                batteryData.badge.fillStyle(0xFF6B6B, 1);
-                batteryData.badge.fillCircle(
-                    batteryData.badgeText.x,
-                    batteryData.badgeText.y,
-                    badgeRadius
-                );
-                batteryData.badge.lineStyle(2, 0xFFFFFF, 1);
-                batteryData.badge.strokeCircle(
-                    batteryData.badgeText.x,
-                    batteryData.badgeText.y,
-                    badgeRadius
-                );
-            }
-        });
-        
         this.tweens.add({
             targets: batteryData.levelText,
             x: batteryData.originalX,
-            y: batteryData.originalY + 35,
+            y: batteryData.originalY + CONFIG.CELL.LEVEL_TEXT_Y_OFFSET,
             duration: 200,
             ease: 'Back.easeOut'
         });
@@ -827,8 +781,12 @@ class MergeScene extends Phaser.Scene {
         this.batteries.forEach(battery => {
             if (battery.inGrid) {
                 battery.level += 1;
-                battery.badgeText.setText(battery.level.toString());
                 battery.levelText.setText(`LVL ${battery.level}`);
+                
+                // Update battery sprite to match new level
+                const batteryIconLevel = Math.min(battery.level, 5);
+                const batteryIcon = `battery${batteryIconLevel}`;
+                battery.sprite.setTexture(batteryIcon);
                 
                 // Update highest level
                 if (battery.level > this.highestBatteryLevel) {
