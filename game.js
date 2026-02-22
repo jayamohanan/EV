@@ -642,10 +642,11 @@
             
             // Get current wheel speed (absolute value for pitch calculation)
             const wheelSpeed = Math.abs(this.vehicle.rearWheel.angularSpeed);
-            const maxSpeed = vc.MAX_SPEED;
+            // Use reference speed for engine sound (speed naturally emerges from torque)
+            const referenceSpeed = 5;  // Reference max angular velocity for sound scaling
             
             // Calculate speed ratio (0 to 1)
-            const speedRatio = Math.min(wheelSpeed / maxSpeed, 1.0);
+            const speedRatio = Math.min(wheelSpeed / referenceSpeed, 1.0);
 
             // Always accelerating - increase pitch and volume based on speed
             this.targetPlaybackRate = Phaser.Math.Linear(
@@ -691,19 +692,24 @@
         applyMotorPower() {
             const vc = CONFIG.VEHICLE;
             
-            // Get current wheel angular velocity
+            // Get rear wheel
             const rearWheel = this.vehicle.rearWheel;
-            const frontWheel = this.vehicle.frontWheel;
             
-            // Always apply forward acceleration (automatic gas pedal)
-            // Forward acceleration with gradual ramp
-            let newSpeed = rearWheel.angularSpeed <= 0 
-                ? vc.MAX_SPEED / 10 
-                : rearWheel.angularSpeed + vc.ACCELERATION;
-            if (newSpeed > vc.MAX_SPEED) newSpeed = vc.MAX_SPEED;
+            // Apply CONSTANT torque to rear wheel
+            // Speed is determined by physics: torque vs friction, mass, obstacles, etc.
+            // Torque = Force × Distance, here we apply rotational force
+            const torque = vc.MOTOR_TORQUE;
             
-            this.matter.body.setAngularVelocity(rearWheel, newSpeed);
-            this.matter.body.setAngularVelocity(frontWheel, newSpeed);
+            // Convert torque to angular acceleration: α = τ / I
+            // Where: α = angular acceleration, τ = torque, I = moment of inertia
+            const angularAcceleration = torque / rearWheel.inertia;
+            
+            // Apply angular acceleration to current angular velocity
+            const newAngularVelocity = rearWheel.angularSpeed + angularAcceleration;
+            this.matter.body.setAngularVelocity(rearWheel, newAngularVelocity);
+            
+            // Note: Front wheel rotates naturally through the chassis constraint
+            // No need to set its velocity - physics handles it
         }
 
         updateVehicleGraphics() {
