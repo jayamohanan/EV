@@ -24,6 +24,26 @@ var CONFIG = {
         LEVEL_TEXT_Y_OFFSET: -40,      // Offset from battery center (negative = above)
     },
     
+    // Battery Spawn Animation (Squash & Stretch with Overshoot)
+    SPAWN_ANIMATION: {
+        // Initial squash state (wide and short)
+        INITIAL_SCALE_X: 1.15,         // Horizontal scale at spawn (1.0 = normal, >1 = wider)
+        INITIAL_SCALE_Y: 0.85,         // Vertical scale at spawn (1.0 = normal, <1 = shorter)
+        
+        // Overshoot stretch (tall and narrow)
+        STRETCH_SCALE_X: 0.9,          // Horizontal scale during stretch (<1 = narrower)
+        STRETCH_SCALE_Y: 1.1,          // Vertical scale during stretch (>1 = taller)
+        STRETCH_DURATION: 150,         // Duration in milliseconds
+        
+        // Bounce back (squash again but less)
+        BOUNCE_SCALE_X: 1.05,          // Horizontal scale during bounce
+        BOUNCE_SCALE_Y: 0.975,         // Vertical scale during bounce
+        BOUNCE_DURATION: 100,          // Duration in milliseconds
+        
+        // Final settle duration
+        SETTLE_DURATION: 80,           // Duration to settle to normal scale (ms)
+    },
+    
     // Vehicle Physics Config
     VEHICLE: {
         CHASSIS_WIDTH: 120,

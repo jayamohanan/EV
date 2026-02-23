@@ -1138,7 +1138,80 @@
             cellData.filledBg.setVisible(true);
             cellData.isEmpty = false;
             
+            // Squash & Stretch animation with overshoot and settle
+            this.playSpawnAnimation(batteryData);
+            
             return batteryData;
+        }
+
+        playSpawnAnimation(batteryData) {
+            const { sprite, levelText } = batteryData;
+            const baseScale = CONFIG.CELL.BATTERY_SCALE;
+            const anim = CONFIG.SPAWN_ANIMATION;
+            
+            // Start from squashed state (wide and short)
+            sprite.setScale(baseScale * anim.INITIAL_SCALE_X, baseScale * anim.INITIAL_SCALE_Y);
+            levelText.setScale(anim.INITIAL_SCALE_X, anim.INITIAL_SCALE_Y);
+            
+            // Animate sprite with squash & stretch using chained tweens
+            // Phase 1: Overshoot stretch (tall and narrow)
+            this.tweens.add({
+                targets: sprite,
+                scaleX: baseScale * anim.STRETCH_SCALE_X,
+                scaleY: baseScale * anim.STRETCH_SCALE_Y,
+                duration: anim.STRETCH_DURATION,
+                ease: 'Cubic.easeOut',
+                onComplete: () => {
+                    // Phase 2: Slight opposite bounce (squash again but less)
+                    this.tweens.add({
+                        targets: sprite,
+                        scaleX: baseScale * anim.BOUNCE_SCALE_X,
+                        scaleY: baseScale * anim.BOUNCE_SCALE_Y,
+                        duration: anim.BOUNCE_DURATION,
+                        ease: 'Cubic.easeInOut',
+                        onComplete: () => {
+                            // Phase 3: Settle to normal scale
+                            this.tweens.add({
+                                targets: sprite,
+                                scaleX: baseScale,
+                                scaleY: baseScale,
+                                duration: anim.SETTLE_DURATION,
+                                ease: 'Cubic.easeOut'
+                            });
+                        }
+                    });
+                }
+            });
+            
+            // Animate level text with same squash & stretch pattern
+            // Phase 1: Overshoot stretch
+            this.tweens.add({
+                targets: levelText,
+                scaleX: anim.STRETCH_SCALE_X,
+                scaleY: anim.STRETCH_SCALE_Y,
+                duration: anim.STRETCH_DURATION,
+                ease: 'Cubic.easeOut',
+                onComplete: () => {
+                    // Phase 2: Slight opposite bounce
+                    this.tweens.add({
+                        targets: levelText,
+                        scaleX: anim.BOUNCE_SCALE_X,
+                        scaleY: anim.BOUNCE_SCALE_Y,
+                        duration: anim.BOUNCE_DURATION,
+                        ease: 'Cubic.easeInOut',
+                        onComplete: () => {
+                            // Phase 3: Settle to normal scale
+                            this.tweens.add({
+                                targets: levelText,
+                                scaleX: 1.0,
+                                scaleY: 1.0,
+                                duration: anim.SETTLE_DURATION,
+                                ease: 'Cubic.easeOut'
+                            });
+                        }
+                    });
+                }
+            });
         }
 
         onDragStart(pointer, gameObject) {
