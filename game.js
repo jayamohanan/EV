@@ -7,6 +7,7 @@
         init() {
             // Vehicle properties
             this.vehicle = null;
+            this.box = null;
             this.isForward = false;
             this.isReverse = false;
             
@@ -104,6 +105,9 @@
             
             // Create vehicle with spring suspension
             this.createVehicle();
+            
+            // Create pushable box
+            this.createBox();
             
             // Create charge bar UI
             this.createChargeBar();
@@ -607,6 +611,40 @@
             this.debugCircles.setDepth(100);  // Draw on top of everything
         }
 
+        createBox() {
+            const bc = CONFIG.BOX;
+            const vc = CONFIG.VEHICLE;
+            const sceneWidth = this.cameras.main.width;
+            
+            // Position box in front of the car on the ground
+            const boxX = sceneWidth / 2 + bc.OFFSET_X;
+            const boxY = this.groundY - bc.HEIGHT / 2; // Resting on ground
+            
+            // Create box physics body
+            this.box = {
+                body: this.matter.add.rectangle(boxX, boxY, bc.WIDTH, bc.HEIGHT, {
+                    density: bc.WEIGHT,
+                    friction: bc.BOX_FRICTION,
+                    frictionStatic: bc.FRICTION,  // Static friction with ground
+                    restitution: 0,  // No bounce
+                    render: {
+                        visible: CONFIG.PHYSICS.DEBUG_GROUND_COLLIDER,
+                        fillStyle: bc.COLOR
+                    }
+                })
+            };
+            
+            // Create box sprite using graphics
+            this.box.sprite = this.add.graphics();
+            this.box.sprite.setDepth(15);  // Between chassis (10) and ground (20)
+            
+            // Draw the box
+            this.box.sprite.fillStyle(bc.COLOR, 1);
+            this.box.sprite.fillRect(-bc.WIDTH / 2, -bc.HEIGHT / 2, bc.WIDTH, bc.HEIGHT);
+            this.box.sprite.lineStyle(bc.BORDER_WIDTH, bc.BORDER_COLOR, 1);
+            this.box.sprite.strokeRect(-bc.WIDTH / 2, -bc.HEIGHT / 2, bc.WIDTH, bc.HEIGHT);
+        }
+
         // Brake and gas buttons removed - car automatically accelerates
 
         setupEngineSound() {
@@ -733,6 +771,15 @@
                 this.vehicle.frontWheel.position.y
             );
             this.frontWheelSprite.setRotation(this.vehicle.frontWheel.angle);
+            
+            // Update box sprite
+            if (this.box && this.box.sprite) {
+                this.box.sprite.setPosition(
+                    this.box.body.position.x,
+                    this.box.body.position.y
+                );
+                this.box.sprite.setRotation(this.box.body.angle);
+            }
             
             // Draw debug circles for wheel offset positions
             this.drawDebugOffsets();

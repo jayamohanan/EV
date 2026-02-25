@@ -76,7 +76,7 @@ var CONFIG = {
         // Motor properties (pure torque-based physics)
         // Speed is NOT controlled - it emerges from torque, friction, mass, and obstacles
         // MOTOR_TORQUE: 0.015,          // Constant torque applied to rear wheel (rotational force)
-         MOTOR_TORQUE: 5, 
+         MOTOR_TORQUE: 40, 
         FRICTION: 0.9,
         WHEEL_FRICTION: 0.9,          // High friction for grip
         WHEEL_GRIP: 0.02,
@@ -88,6 +88,19 @@ var CONFIG = {
         // Starting position
         START_X: 200,
         SPAWN_HEIGHT: 100,     // Height at which vehicle spawns and falls
+    },
+    
+    // Pushable Box Configuration
+    BOX: {
+        WIDTH: 60,                  // Box width in pixels
+        HEIGHT: 60,                 // Box height in pixels
+        WEIGHT: 0.003,              // Box density (lower = lighter, higher = heavier) - try values from 0.001 to 0.01
+        FRICTION: 0.8,              // Friction between box and ground (0-1, higher = more resistance)
+        BOX_FRICTION: 0.5,          // Box surface friction (affects how easily it slides)
+        OFFSET_X: 200,              // Distance in front of car (from car's starting position)
+        COLOR: 0x8B4513,            // Brown color for the box
+        BORDER_COLOR: 0x654321,     // Darker brown for border
+        BORDER_WIDTH: 3,            // Border width in pixels
     },
     
     // Terrain Configuration
