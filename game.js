@@ -67,6 +67,8 @@
             this.load.image('battery3', 'graphics/Battery3.svg');
             this.load.image('battery4', 'graphics/Battery4.svg');
             this.load.image('battery5', 'graphics/Battery5.svg');
+            this.load.image('battery6', 'graphics/Battery6.svg');
+            this.load.image('battery7', 'graphics/Battery7.png');
             this.load.image('coin', 'graphics/coin.png');
             this.load.image('point', 'graphics/point.png');
             
@@ -309,8 +311,8 @@
             const slot = this.chargingSlotsUI[slotIndex];
             const chargePerMinute = level * 5;
             
-            // Determine which battery icon to use (cap at battery5 for levels > 5)
-            const batteryIconLevel = Math.min(level, 5);
+            // Determine which battery icon to use (cap at battery7 for levels > 7)
+            const batteryIconLevel = Math.min(level, 7);
             const batteryIcon = `battery${batteryIconLevel}`;
             
             // Create battery sprite in slot
@@ -1140,8 +1142,8 @@
         spawnBatteryInGrid(row, col, level) {
             const cellData = this.gridCells[row][col];
             
-            // Determine which battery icon to use (cap at battery5 for levels > 5)
-            const batteryIconLevel = Math.min(level, 5);
+            // Determine which battery icon to use (cap at battery7 for levels > 7)
+            const batteryIconLevel = Math.min(level, 7);
             const batteryIcon = `battery${batteryIconLevel}`;
             
             // Create battery sprite
