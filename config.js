@@ -24,6 +24,10 @@ var CONFIG = {
         LEVEL_TEXT_SIZE: '11px',       // Font size for "LVL n" text
         LEVEL_TEXT_COLOR: '#000000',   // Text color (black)
         LEVEL_TEXT_Y_OFFSET: -40,      // Offset from battery center (negative = above)
+        
+        // Draggable background for cell contents (debug)
+        DRAGGABLE_BG_COLOR: 0xff0000,  // Color of draggable area (0xffffff = white, 0xff0000 = red)
+        DRAGGABLE_BG_ALPHA: 1,         // Transparency (0 = invisible, 0.3 = semi-transparent, 1 = opaque)
     },
     
     // Battery Spawn Animation (Squash & Stretch with Overshoot)
@@ -238,4 +242,23 @@ function loadBatteryImagesFromCache(scene, maxLevel = 20) {
             scene.load.image(`battery${level}`, path);
         }
     }
+}
+
+// Get the highest available battery level from loaded images
+function getHighestBatteryLevel() {
+    let highest = 1;
+    for (let level = 1; level <= 100; level++) {
+        if (BATTERY_IMAGE_PATHS[level]) {
+            highest = level;
+        } else {
+            break; // Stop when we hit the first missing level
+        }
+    }
+    return highest;
+}
+
+// Get appropriate battery icon level (uses highest available if level exceeds available sprites)
+function getBatteryIconLevel(level) {
+    const highest = getHighestBatteryLevel();
+    return Math.min(level, highest);
 }

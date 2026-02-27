@@ -419,8 +419,8 @@ class MergeScene extends Phaser.Scene {
     spawnBatteryInGrid(row, col, level) {
         const cellData = this.gridCells[row][col];
         
-        // Determine which battery icon to use (cap at battery7 for levels > 7)
-        const batteryIconLevel = Math.min(level, 7);
+        // Determine which battery icon to use (dynamically uses highest available)
+        const batteryIconLevel = getBatteryIconLevel(level);
         const batteryIcon = `battery${batteryIconLevel}`;
         
         // Create transparent draggable background covering entire cell
@@ -430,8 +430,8 @@ class MergeScene extends Phaser.Scene {
             cellData.y, 
             this.CELL_SIZE, 
             this.CELL_SIZE, 
-            0xffffff, 
-            0 // fully transparent
+            CONFIG.CELL.DRAGGABLE_BG_COLOR, 
+            CONFIG.CELL.DRAGGABLE_BG_ALPHA
         );
         draggableBg.setInteractive({
             draggable: true,
@@ -799,7 +799,7 @@ class MergeScene extends Phaser.Scene {
                 battery.levelText.setText(`LVL ${battery.level}`);
                 
                 // Update battery sprite to match new level
-                const batteryIconLevel = Math.min(battery.level, 5);
+                const batteryIconLevel = getBatteryIconLevel(battery.level);
                 const batteryIcon = `battery${batteryIconLevel}`;
                 battery.sprite.setTexture(batteryIcon);
                 

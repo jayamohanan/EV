@@ -306,8 +306,8 @@
             const slot = this.chargingSlotsUI[slotIndex];
             const chargePerMinute = level * 5;
             
-            // Determine which battery icon to use (cap at battery7 for levels > 7)
-            const batteryIconLevel = Math.min(level, 7);
+            // Determine which battery icon to use (dynamically uses highest available)
+            const batteryIconLevel = getBatteryIconLevel(level);
             const batteryIcon = `battery${batteryIconLevel}`;
             
             // Create battery sprite in slot
@@ -1137,8 +1137,8 @@
         spawnBatteryInGrid(row, col, level) {
             const cellData = this.gridCells[row][col];
             
-            // Determine which battery icon to use (cap at battery7 for levels > 7)
-            const batteryIconLevel = Math.min(level, 7);
+            // Determine which battery icon to use (dynamically uses highest available)
+            const batteryIconLevel = getBatteryIconLevel(level);
             const batteryIcon = `battery${batteryIconLevel}`;
             
             // Create battery sprite
@@ -1798,7 +1798,7 @@
                     battery.levelText.setText(`LVL ${battery.level}`);
                     
                     // Update battery sprite to match new level
-                    const batteryIconLevel = Math.min(battery.level, 5);
+                    const batteryIconLevel = getBatteryIconLevel(battery.level);
                     const batteryIcon = `battery${batteryIconLevel}`;
                     battery.sprite.setTexture(batteryIcon);
                     
@@ -1826,7 +1826,7 @@
                     }
                     
                     // Update battery sprite to match new level
-                    const batteryIconLevel = Math.min(newLevel, 5);
+                    const batteryIconLevel = getBatteryIconLevel(newLevel);
                     const batteryIcon = `battery${batteryIconLevel}`;
                     if (slot.batterySprite) {
                         slot.batterySprite.setTexture(batteryIcon);
