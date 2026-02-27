@@ -7,7 +7,7 @@
         init() {
             // Vehicle properties
             this.vehicle = null;
-            this.box = null;
+            this.boxes = []; // Array to hold multiple boxes
             this.isForward = false;
             this.isReverse = false;
             
@@ -505,8 +505,8 @@
             const sceneWidth = this.cameras.main.width;
             const sceneHeight = this.cameras.main.height;
             
-            // Spawn vehicle on the ground
-            const x = sceneWidth / 2;
+            // Spawn vehicle at the left end of the screen (fully visible)
+            const x = 120; // Left side position
             const y = this.groundY - 50; // Above ground
             
             // Create collision group for vehicle (like car.ts example)
@@ -613,36 +613,44 @@
 
         createBox() {
             const bc = CONFIG.BOX;
-            const vc = CONFIG.VEHICLE;
             const sceneWidth = this.cameras.main.width;
-            
-            // Position box in front of the car on the ground
-            const boxX = sceneWidth / 2 + bc.OFFSET_X;
             const boxY = this.groundY - bc.HEIGHT / 2; // Resting on ground
             
-            // Create box physics body
-            this.box = {
-                body: this.matter.add.rectangle(boxX, boxY, bc.WIDTH, bc.HEIGHT, {
-                    density: bc.WEIGHT,
-                    friction: bc.BOX_FRICTION,
-                    frictionStatic: bc.FRICTION,  // Static friction with ground
-                    restitution: 0,  // No bounce
-                    render: {
-                        visible: CONFIG.PHYSICS.DEBUG_GROUND_COLLIDER,
-                        fillStyle: bc.COLOR
-                    }
-                })
-            };
+            // Create 4 boxes with gaps between them
+            const numBoxes = 4;
+            const gapBetweenBoxes = 80; // Gap between each box
+            const startX = 350; // Starting position for first box
             
-            // Create box sprite using graphics
-            this.box.sprite = this.add.graphics();
-            this.box.sprite.setDepth(15);  // Between chassis (10) and ground (20)
-            
-            // Draw the box
-            this.box.sprite.fillStyle(bc.COLOR, 1);
-            this.box.sprite.fillRect(-bc.WIDTH / 2, -bc.HEIGHT / 2, bc.WIDTH, bc.HEIGHT);
-            this.box.sprite.lineStyle(bc.BORDER_WIDTH, bc.BORDER_COLOR, 1);
-            this.box.sprite.strokeRect(-bc.WIDTH / 2, -bc.HEIGHT / 2, bc.WIDTH, bc.HEIGHT);
+            for (let i = 0; i < numBoxes; i++) {
+                const boxX = startX + i * (bc.WIDTH + gapBetweenBoxes);
+                
+                // Create box physics body
+                const box = {
+                    body: this.matter.add.rectangle(boxX, boxY, bc.WIDTH, bc.HEIGHT, {
+                        density: bc.WEIGHT,
+                        friction: bc.BOX_FRICTION,
+                        frictionStatic: bc.FRICTION,  // Static friction with ground
+                        restitution: 0,  // No bounce
+                        render: {
+                            visible: CONFIG.PHYSICS.DEBUG_GROUND_COLLIDER,
+                            fillStyle: bc.COLOR
+                        }
+                    })
+                };
+                
+                // Create box sprite using graphics
+                box.sprite = this.add.graphics();
+                box.sprite.setDepth(15);  // Between chassis (10) and ground (20)
+                
+                // Draw the box
+                box.sprite.fillStyle(bc.COLOR, 1);
+                box.sprite.fillRect(-bc.WIDTH / 2, -bc.HEIGHT / 2, bc.WIDTH, bc.HEIGHT);
+                box.sprite.lineStyle(bc.BORDER_WIDTH, bc.BORDER_COLOR, 1);
+                box.sprite.strokeRect(-bc.WIDTH / 2, -bc.HEIGHT / 2, bc.WIDTH, bc.HEIGHT);
+                
+                // Store box in array
+                this.boxes.push(box);
+            }
         }
 
         // Brake and gas buttons removed - car automatically accelerates
@@ -772,13 +780,16 @@
             );
             this.frontWheelSprite.setRotation(this.vehicle.frontWheel.angle);
             
-            // Update box sprite
-            if (this.box && this.box.sprite) {
-                this.box.sprite.setPosition(
-                    this.box.body.position.x,
-                    this.box.body.position.y
-                );
-                this.box.sprite.setRotation(this.box.body.angle);
+            // Update all box sprites
+            for (let i = 0; i < this.boxes.length; i++) {
+                const box = this.boxes[i];
+                if (box && box.sprite) {
+                    box.sprite.setPosition(
+                        box.body.position.x,
+                        box.body.position.y
+                    );
+                    box.sprite.setRotation(box.body.angle);
+                }
             }
             
             // Draw debug circles for wheel offset positions
