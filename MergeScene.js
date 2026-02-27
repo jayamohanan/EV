@@ -36,6 +36,8 @@ class MergeScene extends Phaser.Scene {
         this.load.image('battery3', 'graphics/Battery3.svg');
         this.load.image('battery4', 'graphics/Battery4.svg');
         this.load.image('battery5', 'graphics/Battery5.svg');
+        this.load.image('battery6', 'graphics/Battery6.svg');
+        this.load.image('battery7', 'graphics/Battery7.png');
         this.load.image('coin', 'graphics/coin.png');
         this.load.image('point', 'graphics/point.png');
     }
@@ -421,27 +423,28 @@ class MergeScene extends Phaser.Scene {
     spawnBatteryInGrid(row, col, level) {
         const cellData = this.gridCells[row][col];
         
-        // Determine which battery icon to use (cap at battery5 for levels > 5)
-        const batteryIconLevel = Math.min(level, 5);
+        // Determine which battery icon to use (cap at battery7 for levels > 7)
+        const batteryIconLevel = Math.min(level, 7);
         const batteryIcon = `battery${batteryIconLevel}`;
         
-        // Create battery sprite
-        const battery = this.add.image(cellData.x, cellData.y + CONFIG.CELL.BATTERY_Y_OFFSET, batteryIcon);
-        battery.setScale(CONFIG.CELL.BATTERY_SCALE);
-        
-        // Create invisible hit area covering entire cell for dragging
-        const hitArea = new Phaser.Geom.Rectangle(
-            -this.CELL_SIZE / 2,
-            -this.CELL_SIZE / 2,
-            this.CELL_SIZE,
-            this.CELL_SIZE
+        // Create transparent draggable background covering entire cell
+        // This makes dragging work anywhere in the cell, not just on non-transparent sprite pixels
+        const draggableBg = this.add.rectangle(
+            cellData.x, 
+            cellData.y, 
+            this.CELL_SIZE, 
+            this.CELL_SIZE, 
+            0xffffff, 
+            0 // fully transparent
         );
-        battery.setInteractive({
-            hitArea: hitArea,
-            hitAreaCallback: Phaser.Geom.Rectangle.Contains,
+        draggableBg.setInteractive({
             draggable: true,
             useHandCursor: true
         });
+        
+        // Create battery sprite (not directly draggable, dragged via draggableBg)
+        const battery = this.add.image(cellData.x, cellData.y + CONFIG.CELL.BATTERY_Y_OFFSET, batteryIcon);
+        battery.setScale(CONFIG.CELL.BATTERY_SCALE);
         
         // Add level text at top of battery
         const levelText = this.add.text(
@@ -457,6 +460,7 @@ class MergeScene extends Phaser.Scene {
         ).setOrigin(0.5);
         
         const batteryData = {
+            draggableBg: draggableBg,
             sprite: battery,
             levelText: levelText,
             level: level,
@@ -468,7 +472,7 @@ class MergeScene extends Phaser.Scene {
             inChargingSlot: false
         };
         
-        battery.setData('batteryData', batteryData);
+        draggableBg.setData('batteryData', batteryData);
         
         this.batteries.push(batteryData);
         this.grid[row][col] = batteryData;
@@ -487,8 +491,9 @@ class MergeScene extends Phaser.Scene {
         this.draggingBattery = batteryData;
         
         // Bring to front with very high depth (above both scenes)
-        batteryData.sprite.setDepth(10000);
-        batteryData.levelText.setDepth(10001);
+        batteryData.draggableBg.setDepth(10000);
+        batteryData.sprite.setDepth(10001);
+        batteryData.levelText.setDepth(10002);
         
         // Remove start overlay on first drag
         if (this.startOverlay) {
@@ -506,7 +511,9 @@ class MergeScene extends Phaser.Scene {
         
         const batteryData = gameObject.getData('batteryData');
         
-        // Move battery and its UI elements
+        // Move all battery elements together (draggableBg, sprite, and text)
+        batteryData.draggableBg.x = dragX;
+        batteryData.draggableBg.y = dragY;
         batteryData.sprite.x = dragX;
         batteryData.sprite.y = dragY;
         batteryData.levelText.setPosition(dragX, dragY + CONFIG.CELL.LEVEL_TEXT_Y_OFFSET);
@@ -670,14 +677,16 @@ class MergeScene extends Phaser.Scene {
             this.batteries.splice(index, 1);
         }
         
-        // Destroy sprites
+        // Destroy all elements
+        batteryData.draggableBg.destroy();
         batteryData.sprite.destroy();
         batteryData.levelText.destroy();
     }
 
     returnBatteryToPosition(batteryData) {
-        batteryData.sprite.setDepth(0);
-        batteryData.levelText.setDepth(1);
+        batteryData.draggableBg.setDepth(0);
+        batteryData.sprite.setDepth(1);
+        batteryData.levelText.setDepth(2);
         
         // If battery is in grid, ensure background is visible
         if (batteryData.inGrid) {
@@ -685,7 +694,16 @@ class MergeScene extends Phaser.Scene {
             this.gridCells[batteryData.row][batteryData.col].isEmpty = false;
         }
         
-        // Animate back to original position
+        // Animate draggable background back to original position (cell center)
+        this.tweens.add({
+            targets: batteryData.draggableBg,
+            x: batteryData.originalX,
+            y: batteryData.originalY - CONFIG.CELL.BATTERY_Y_OFFSET,
+            duration: 200,
+            ease: 'Back.easeOut'
+        });
+        
+        // Animate battery sprite back to original position
         this.tweens.add({
             targets: batteryData.sprite,
             x: batteryData.originalX,
@@ -694,6 +712,7 @@ class MergeScene extends Phaser.Scene {
             ease: 'Back.easeOut'
         });
         
+        // Animate level text back to original position
         this.tweens.add({
             targets: batteryData.levelText,
             x: batteryData.originalX,
