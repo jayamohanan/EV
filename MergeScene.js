@@ -11,9 +11,9 @@ class MergeScene extends Phaser.Scene {
         this.batteries = [];
         this.draggingBattery = null;
         this.hasStartedPlaying = false;
-        this.spawnButtonLevel = 1;
+        this.spawnButtonLevel = CONFIG.BATTERY_START_LEVEL;
         this.spawnCost = 10;
-        this.highestBatteryLevel = 1;
+        this.highestBatteryLevel = CONFIG.BATTERY_START_LEVEL;
         this.levelUpTimer = null;
         this.levelUpButtonVisible = false;
         this.levelUpButtonShowTime = null;
@@ -62,7 +62,7 @@ class MergeScene extends Phaser.Scene {
         this.createGrid();
         
         // Spawn initial battery in grid
-        this.spawnBatteryInGrid(0, 0, 1);
+        this.spawnBatteryInGrid(0, 0, CONFIG.BATTERY_START_LEVEL);
         
         // Create spawn button and level-up button
         this.createButtons();

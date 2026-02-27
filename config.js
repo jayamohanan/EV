@@ -4,6 +4,7 @@ var CONFIG = {
     TEXT_COLOR: '#333333',
     
     RESET_PROGRESS: false,         // Set to true to clear saved progress on load
+    BATTERY_START_LEVEL: 6,        // Starting level for spawned batteries (1-7). Set higher to test high-level sprites without merging
     
     // Grid Cell Configuration
     CELL: {
