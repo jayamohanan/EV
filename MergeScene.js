@@ -31,13 +31,9 @@ class MergeScene extends Phaser.Scene {
     }
 
     preload() {
-        this.load.image('battery1', 'graphics/Battery1.svg');
-        this.load.image('battery2', 'graphics/Battery2.svg');
-        this.load.image('battery3', 'graphics/Battery3.svg');
-        this.load.image('battery4', 'graphics/Battery4.svg');
-        this.load.image('battery5', 'graphics/Battery5.svg');
-        this.load.image('battery6', 'graphics/Battery6.svg');
-        this.load.image('battery7', 'graphics/Battery7.png');
+        // Load battery images with extension fallback (from pre-initialized cache)
+        loadBatteryImagesFromCache(this, 20);
+        
         this.load.image('coin', 'graphics/coin.png');
         this.load.image('point', 'graphics/point.png');
     }

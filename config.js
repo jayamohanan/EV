@@ -5,6 +5,7 @@ var CONFIG = {
     
     RESET_PROGRESS: false,         // Set to true to clear saved progress on load
     BATTERY_START_LEVEL: 6,        // Starting level for spawned batteries (1-7). Set higher to test high-level sprites without merging
+    BATTERY_IMAGE_EXTENSIONS: ['svg', 'png', 'jpg', 'webp'],  // Priority order for battery image extensions
     
     // Grid Cell Configuration
     CELL: {
@@ -184,3 +185,57 @@ var CONFIG = {
         DURATION: 600                  // Animation duration in milliseconds
     }
 };
+
+// Battery image path cache (populated before game starts)
+var BATTERY_IMAGE_PATHS = {};
+
+// Utility function to check if a file exists
+function checkFileExists(url) {
+    return new Promise((resolve) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('HEAD', url, true);
+        xhr.onload = () => resolve(xhr.status === 200);
+        xhr.onerror = () => resolve(false);
+        xhr.send();
+    });
+}
+
+// Utility function to find the correct battery image path with extension fallback
+async function getBatteryImagePath(level) {
+    const basePath = `graphics/Battery${level}`;
+    
+    for (const ext of CONFIG.BATTERY_IMAGE_EXTENSIONS) {
+        const path = `${basePath}.${ext}`;
+        if (await checkFileExists(path)) {
+            return path;
+        }
+    }
+    
+    // Fallback to svg if nothing found (will show load error if doesn't exist)
+    return `${basePath}.svg`;
+}
+
+// Initialize battery image paths cache
+async function initBatteryImagePaths(maxLevel = 20) {
+    const promises = [];
+    
+    for (let level = 1; level <= maxLevel; level++) {
+        promises.push(
+            getBatteryImagePath(level).then(path => {
+                BATTERY_IMAGE_PATHS[level] = path;
+            })
+        );
+    }
+    
+    await Promise.all(promises);
+}
+
+// Helper function to load all battery images (to be called in preload after cache is initialized)
+function loadBatteryImagesFromCache(scene, maxLevel = 20) {
+    for (let level = 1; level <= maxLevel; level++) {
+        const path = BATTERY_IMAGE_PATHS[level];
+        if (path) {
+            scene.load.image(`battery${level}`, path);
+        }
+    }
+}

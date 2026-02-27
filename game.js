@@ -61,14 +61,9 @@
             this.load.image('tire', 'graphics/tire.png');
             this.load.image('ground', 'graphics/ground.png');
             
-            // Load merge scene assets
-            this.load.image('battery1', 'graphics/Battery1.svg');
-            this.load.image('battery2', 'graphics/Battery2.svg');
-            this.load.image('battery3', 'graphics/Battery3.svg');
-            this.load.image('battery4', 'graphics/Battery4.svg');
-            this.load.image('battery5', 'graphics/Battery5.svg');
-            this.load.image('battery6', 'graphics/Battery6.svg');
-            this.load.image('battery7', 'graphics/Battery7.png');
+            // Load battery images with extension fallback (from pre-initialized cache)
+            loadBatteryImagesFromCache(this, 20);
+            
             this.load.image('coin', 'graphics/coin.png');
             this.load.image('point', 'graphics/point.png');
             
@@ -1898,7 +1893,15 @@
         },
     };
 
-    // Create game instance
+    // Initialize battery image paths cache, then create game instance
     if (typeof window !== 'undefined' && !window.__LEVEL_VIEWER__) {
-        const game = new Phaser.Game(config);
+        console.log('Checking battery image files...');
+        initBatteryImagePaths(20).then(() => {
+            console.log('Battery images detected:', BATTERY_IMAGE_PATHS);
+            const loadingIndicator = document.getElementById('loading-indicator');
+            if (loadingIndicator) {
+                loadingIndicator.style.display = 'none';
+            }
+            const game = new Phaser.Game(config);
+        });
     }
