@@ -1141,23 +1141,24 @@
             const batteryIconLevel = getBatteryIconLevel(level);
             const batteryIcon = `battery${batteryIconLevel}`;
             
-            // Create battery sprite
-            const battery = this.add.image(cellData.x, cellData.y + CONFIG.CELL.BATTERY_Y_OFFSET, batteryIcon);
-            battery.setScale(CONFIG.CELL.BATTERY_SCALE);
-            
-            // Create invisible hit area covering entire cell for dragging
-            const hitArea = new Phaser.Geom.Rectangle(
-                -this.CELL_SIZE / 2,
-                -this.CELL_SIZE / 2,
-                this.CELL_SIZE,
-                this.CELL_SIZE
+            // Create transparent draggable background covering entire cell
+            // This makes dragging work anywhere in the cell, not just on non-transparent sprite pixels
+            const draggableBg = this.add.rectangle(
+                cellData.x, 
+                cellData.y, 
+                this.CELL_SIZE, 
+                this.CELL_SIZE, 
+                CONFIG.CELL.DRAGGABLE_BG_COLOR, 
+                CONFIG.CELL.DRAGGABLE_BG_ALPHA
             );
-            battery.setInteractive({
-                hitArea: hitArea,
-                hitAreaCallback: Phaser.Geom.Rectangle.Contains,
+            draggableBg.setInteractive({
                 draggable: true,
                 useHandCursor: true
             });
+            
+            // Create battery sprite (not directly draggable, dragged via draggableBg)
+            const battery = this.add.image(cellData.x, cellData.y + CONFIG.CELL.BATTERY_Y_OFFSET, batteryIcon);
+            battery.setScale(CONFIG.CELL.BATTERY_SCALE);
             
             // Add level text at top of battery
             const levelText = this.add.text(
@@ -1173,6 +1174,7 @@
             ).setOrigin(0.5);
             
             const batteryData = {
+                draggableBg: draggableBg,
                 sprite: battery,
                 levelText: levelText,
                 level: level,
@@ -1184,7 +1186,7 @@
                 inChargingSlot: false
             };
             
-            battery.setData('batteryData', batteryData);
+            draggableBg.setData('batteryData', batteryData);
             
             this.batteries.push(batteryData);
             this.grid[row][col] = batteryData;
@@ -1275,9 +1277,10 @@
             const batteryData = gameObject.getData('batteryData');
             this.draggingBattery = batteryData;
             
-            // Bring to front with very high depth
-            batteryData.sprite.setDepth(10000);
-            batteryData.levelText.setDepth(10001);
+            // Bring to front with very high depth (above both scenes)
+            batteryData.draggableBg.setDepth(10000);
+            batteryData.sprite.setDepth(10001);
+            batteryData.levelText.setDepth(10002);
             
             // Remove start overlay on first drag (if user drags instead of clicking spawn)
             if (this.startOverlay) {
@@ -1290,7 +1293,9 @@
             
             const batteryData = gameObject.getData('batteryData');
             
-            // Move battery and its UI elements
+            // Move all battery elements together (draggableBg, sprite, and text)
+            batteryData.draggableBg.x = dragX;
+            batteryData.draggableBg.y = dragY;
             batteryData.sprite.x = dragX;
             batteryData.sprite.y = dragY;
             batteryData.levelText.setPosition(dragX, dragY + CONFIG.CELL.LEVEL_TEXT_Y_OFFSET);
@@ -1620,6 +1625,8 @@
                 slot.batterySprite = null;
                 slot.batteryLevelText = null;
                 
+                // Destroy battery elements (may or may not have draggableBg)
+                if (draggedBattery.draggableBg) draggedBattery.draggableBg.destroy();
                 draggedBattery.sprite.destroy();
                 draggedBattery.levelText.destroy();
             }
@@ -1675,20 +1682,31 @@
                 this.batteries.splice(index, 1);
             }
             
-            // Destroy sprites
+            // Destroy all elements
+            batteryData.draggableBg.destroy();
             batteryData.sprite.destroy();
             batteryData.levelText.destroy();
         }
 
         returnBatteryToPosition(batteryData) {
-            batteryData.sprite.setDepth(10);
-            batteryData.levelText.setDepth(11);
+            batteryData.draggableBg.setDepth(0);
+            batteryData.sprite.setDepth(1);
+            batteryData.levelText.setDepth(2);
             
             // If battery is in grid, ensure background is visible
             if (batteryData.inGrid) {
                 this.gridCells[batteryData.row][batteryData.col].filledBg.setVisible(true);
                 this.gridCells[batteryData.row][batteryData.col].isEmpty = false;
             }
+            
+            // Animate draggable background back to original position (cell center)
+            this.tweens.add({
+                targets: batteryData.draggableBg,
+                x: batteryData.originalX,
+                y: batteryData.originalY - CONFIG.CELL.BATTERY_Y_OFFSET,
+                duration: 200,
+                ease: 'Back.easeOut'
+            });
             
             // Animate back to original position
             this.tweens.add({

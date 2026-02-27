@@ -4,7 +4,7 @@ var CONFIG = {
     TEXT_COLOR: '#333333',
     
     RESET_PROGRESS: false,         // Set to true to clear saved progress on load
-    BATTERY_START_LEVEL: 6,        // Starting level for spawned batteries (1-7). Set higher to test high-level sprites without merging
+    BATTERY_START_LEVEL: 7,        // Starting level for spawned batteries (1-7). Set higher to test high-level sprites without merging
     BATTERY_IMAGE_EXTENSIONS: ['svg', 'png', 'jpg', 'webp'],  // Priority order for battery image extensions
     
     // Grid Cell Configuration
@@ -26,8 +26,8 @@ var CONFIG = {
         LEVEL_TEXT_Y_OFFSET: -40,      // Offset from battery center (negative = above)
         
         // Draggable background for cell contents (debug)
-        DRAGGABLE_BG_COLOR: 0xff0000,  // Color of draggable area (0xffffff = white, 0xff0000 = red)
-        DRAGGABLE_BG_ALPHA: 1,         // Transparency (0 = invisible, 0.3 = semi-transparent, 1 = opaque)
+        DRAGGABLE_BG_COLOR: 0xffffff,  // Color of draggable area (0xffffff = white, 0xff0000 = red)
+        DRAGGABLE_BG_ALPHA: 0,         // Transparency (0 = invisible, 0.3 = semi-transparent, 1 = opaque)
     },
     
     // Battery Spawn Animation (Squash & Stretch with Overshoot)
