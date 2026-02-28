@@ -35,6 +35,7 @@ class MergeScene extends Phaser.Scene {
         
         this.load.image('coin', 'graphics/coin.svg');
         this.load.image('point', 'graphics/point.png');
+        this.load.image('button', 'graphics/Button.png');
     }
 
     create() {
@@ -158,8 +159,8 @@ class MergeScene extends Phaser.Scene {
         // Spawn button
         const spawnButton = this.add.container(sceneWidth / 2, buttonY);
         
-        const spawnBg = this.add.rectangle(0, 0, CONFIG.BUTTON.SPAWN_WIDTH, CONFIG.BUTTON.SPAWN_HEIGHT, CONFIG.BUTTON.SPAWN_COLOR);
-        spawnBg.setStrokeStyle(CONFIG.BUTTON.SPAWN_BORDER_WIDTH, CONFIG.BUTTON.SPAWN_BORDER_COLOR);
+        const spawnBg = this.add.image(0, 0, 'button');
+        spawnBg.setDisplaySize(CONFIG.BUTTON.SPAWN_WIDTH, CONFIG.BUTTON.SPAWN_HEIGHT);
         spawnBg.setInteractive({ useHandCursor: true });
         
         // Battery icon on button - use correct level based on BATTERY_START_LEVEL
