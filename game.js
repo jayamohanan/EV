@@ -64,7 +64,7 @@
             // Load battery images with extension fallback (from pre-initialized cache)
             loadBatteryImagesFromCache(this, 20);
             
-            this.load.image('coin', 'graphics/coin.png');
+            this.load.image('coin', 'graphics/coin.svg');
             this.load.image('point', 'graphics/point.png');
             
             // Load charging effect

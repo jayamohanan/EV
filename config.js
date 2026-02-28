@@ -4,7 +4,7 @@ var CONFIG = {
     TEXT_COLOR: '#333333',
     
     RESET_PROGRESS: false,         // Set to true to clear saved progress on load
-    BATTERY_START_LEVEL: 7,        // Starting level for spawned batteries (1-7). Set higher to test high-level sprites without merging
+    BATTERY_START_LEVEL: 1,        // Starting level for spawned batteries (1-7). Set higher to test high-level sprites without merging
     BATTERY_IMAGE_EXTENSIONS: ['svg', 'png', 'jpg', 'webp'],  // Priority order for battery image extensions
     
     // UI Button Configuration
@@ -28,8 +28,8 @@ var CONFIG = {
         BUTTON_SPACING: 220,           // Horizontal spacing between buttons
         
         // Battery icon in spawn button (fixed size, independent of image resolution)
-        BATTERY_ICON_WIDTH: 45,        // Display width in pixels (fixed size)
-        BATTERY_ICON_HEIGHT: 45,       // Display height in pixels (fixed size)
+        BATTERY_ICON_WIDTH: 64,        // Display width in pixels (fixed size)
+        BATTERY_ICON_HEIGHT: 64,       // Display height in pixels (fixed size)
         BATTERY_ICON_X: -80,           // X position offset from button center
         BATTERY_ICON_Y: 0,             // Y position offset from button center
         
