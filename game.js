@@ -78,16 +78,11 @@
             const sceneWidth = this.cameras.main.width;
             const sceneHeight = this.cameras.main.height;
             
-            // Add vehicle section background (top half)
-            this.add.rectangle(sceneWidth / 2, sceneHeight * 0.25, sceneWidth, sceneHeight * 0.5, 0xD3E8EE);
+            // Add vehicle section background (top half) - same color as merge section
+            this.add.rectangle(sceneWidth / 2, sceneHeight * 0.25, sceneWidth, sceneHeight * 0.5, 0xEEF5F8);
             
             // Add merge section background (bottom half)
             this.add.rectangle(sceneWidth / 2, sceneHeight * 0.75, sceneWidth, sceneHeight * 0.5, 0xEEF5F8);
-            
-            // Add separator line between sections
-            const separator = this.add.graphics();
-            separator.lineStyle(4, 0x2C5F8D, 1);
-            separator.lineBetween(0, sceneHeight / 2, sceneWidth, sceneHeight / 2);
             
             // Create world bounds
             this.matter.world.setBounds(0, 0, sceneWidth, sceneHeight);
@@ -1904,7 +1899,7 @@
     const config = {
         type: Phaser.AUTO,
         parent: 'game-container',
-        backgroundColor: '#87CEEB',
+        backgroundColor: '#EEF5F8',
         scene: [GameScene],
         
         physics: {
