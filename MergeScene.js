@@ -22,7 +22,6 @@ class MergeScene extends Phaser.Scene {
         this.mergeOverlay = null;           // Reference to merge tutorial overlay
         
         // Grid layout constants (can be overridden by CONFIG.CELL)
-        this.GRID_START_Y = 100;
         this.CELL_SIZE = CONFIG.CELL.SIZE;
         this.CELL_GAP = CONFIG.CELL.GAP;
         this.CELL_RADIUS = CONFIG.CELL.RADIUS;
@@ -46,16 +45,11 @@ class MergeScene extends Phaser.Scene {
         // Background for merge section
         this.add.rectangle(sceneWidth / 2, sceneHeight / 2, sceneWidth, sceneHeight, 0xEEF5F8);
         
-        // Calculate grid center position
-        const gridWidth = this.GRID_COLS * this.CELL_SIZE + (this.GRID_COLS - 1) * this.CELL_GAP;
-        const gridHeight = this.GRID_ROWS * this.CELL_SIZE + (this.GRID_ROWS - 1) * this.CELL_GAP;
-        this.gridStartX = (sceneWidth - gridWidth) / 2 + this.CELL_SIZE / 2;
-        
-        // Create coin display
-        this.createCoinDisplay();
-        
-        // Create 3x3 grid
+        // Create 3x3 grid (must be before coin display to calculate grid position)
         this.createGrid();
+        
+        // Create coin display (positioned relative to grid)
+        this.createCoinDisplay();
         
         // Spawn initial battery in grid
         this.spawnBatteryInGrid(0, 0, CONFIG.BATTERY_START_LEVEL);
@@ -75,29 +69,50 @@ class MergeScene extends Phaser.Scene {
     createCoinDisplay() {
         const sceneWidth = this.cameras.main.width;
         
-        // Coin container
-        const coinBg = this.add.rectangle(sceneWidth - 100, 75, 160, 50, 0xFFD700, 1);
-        coinBg.setStrokeStyle(3, 0xFFA500);
+        // Calculate position: top-right above grid
+        const gridWidth = this.GRID_COLS * this.CELL_SIZE + (this.GRID_COLS - 1) * this.CELL_GAP;
+        const gridRightX = this.gridStartX + gridWidth - this.CELL_SIZE / 2;
         
-        // Coin icon
-        const coinIcon = this.add.image(sceneWidth - 140, 75, 'coin').setScale(0.15);
+        // Position above the top edge of the grid (gridStartY is center of top row cells)
+        const gridTopEdge = this.gridStartY - this.CELL_SIZE / 2;
+        const coinY = gridTopEdge - CONFIG.COIN_COUNTER.PADDING_FROM_GRID_TOP;
         
-        this.coinText = this.add.text(sceneWidth - 80, 75, `${this.coins}`, {
-            fontSize: '24px',
+        // Coin text (displayed first)
+        this.coinText = this.add.text(gridRightX - CONFIG.COIN_COUNTER.OFFSET_FROM_RIGHT, coinY, `${this.coins}`, {
+            fontSize: CONFIG.COIN_COUNTER.TEXT_SIZE,
             fontFamily: CONFIG.FONT_FAMILY,
-            color: '#000000',
+            color: CONFIG.COIN_COUNTER.TEXT_COLOR,
             fontStyle: 'bold'
-        }).setOrigin(0.5);
+        }).setOrigin(1, 0.5);  // Right-aligned
+        
+        // Coin icon (to the right of text)
+        const coinIconX = this.coinText.x + CONFIG.COIN_COUNTER.TEXT_ICON_SPACING + CONFIG.COIN_COUNTER.COIN_ICON_WIDTH / 2;
+        this.coinIcon = this.add.image(coinIconX, coinY, 'coin');
+        this.coinIcon.setDisplaySize(CONFIG.COIN_COUNTER.COIN_ICON_WIDTH, CONFIG.COIN_COUNTER.COIN_ICON_HEIGHT);
     }
 
     createGrid() {
+        const sceneWidth = this.cameras.main.width;
         const sceneHeight = this.cameras.main.height;
+        
+        // Calculate grid dimensions
+        const gridWidth = this.GRID_COLS * this.CELL_SIZE + (this.GRID_COLS - 1) * this.CELL_GAP;
+        const gridHeight = this.GRID_ROWS * this.CELL_SIZE + (this.GRID_ROWS - 1) * this.CELL_GAP;
+        
+        // Calculate grid position: above spawn button with padding
+        const buttonY = sceneHeight - CONFIG.BUTTON.BOTTOM_PADDING;
+        const gridBottomY = buttonY - CONFIG.BUTTON.SPAWN_HEIGHT / 2 - CONFIG.GRID.PADDING_FROM_BUTTON_TOP;
+        const gridStartY = gridBottomY - gridHeight + this.CELL_SIZE / 2;
+        
+        // Store grid boundaries for coin display
+        this.gridStartY = gridStartY;
+        this.gridStartX = (sceneWidth - gridWidth) / 2 + this.CELL_SIZE / 2;
         
         for (let row = 0; row < this.GRID_ROWS; row++) {
             this.gridCells[row] = [];
             for (let col = 0; col < this.GRID_COLS; col++) {
                 const x = this.gridStartX + col * (this.CELL_SIZE + this.CELL_GAP);
-                const y = this.GRID_START_Y + row * (this.CELL_SIZE + this.CELL_GAP);
+                const y = this.gridStartY + row * (this.CELL_SIZE + this.CELL_GAP);
                 
                 // Empty cell background (rounded rectangle)
                 const cell = this.add.graphics();
@@ -833,6 +848,11 @@ class MergeScene extends Phaser.Scene {
 
     updateCoinDisplay() {
         this.coinText.setText(`${this.coins}`);
+        
+        // Update coin icon position to stay next to text
+        const coinIconX = this.coinText.x + CONFIG.COIN_COUNTER.TEXT_ICON_SPACING + CONFIG.COIN_COUNTER.COIN_ICON_WIDTH / 2;
+        this.coinIcon.setX(coinIconX);
+        
         this.updateSpawnButton();
     }
 

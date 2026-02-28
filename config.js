@@ -37,10 +37,26 @@ var CONFIG = {
         COIN_TEXT_SIZE: '32px',        // Font size for coin cost text
         COIN_TEXT_X: 20,               // X position offset from button center
         COIN_TEXT_Y: 0,                // Y position offset from button center
-        COIN_ICON_WIDTH: 35,           // Display width in pixels (fixed size)
-        COIN_ICON_HEIGHT: 35,          // Display height in pixels (fixed size)
-        COIN_ICON_X: 60,               // X position offset from button center
+        COIN_ICON_WIDTH: 50,           // Display width in pixels (fixed size)
+        COIN_ICON_HEIGHT: 50,          // Display height in pixels (fixed size)
+        COIN_ICON_X: 80,               // X position offset from button center
         COIN_ICON_Y: 0,                // Y position offset from button center
+    },
+    
+    // Grid Layout Configuration
+    GRID: {
+        PADDING_FROM_BUTTON_TOP: 40,   // Padding between top of spawn button and bottom of grid (pixels)
+    },
+    
+    // Coin Counter Display (above grid, top-right)
+    COIN_COUNTER: {
+        PADDING_FROM_GRID_TOP: 50,     // Padding above the grid (pixels)
+        OFFSET_FROM_RIGHT: 50,         // Horizontal offset from right edge of grid (pixels)
+        TEXT_SIZE: '48px',             // Font size for coin count text
+        TEXT_COLOR: '#FFD700',         // Gold color for text
+        COIN_ICON_WIDTH: 40,           // Coin icon display width (pixels)
+        COIN_ICON_HEIGHT: 40,          // Coin icon display height (pixels)
+        TEXT_ICON_SPACING: 10,         // Spacing between text and coin icon (pixels)
     },
     
     // Grid Cell Configuration
