@@ -336,9 +336,9 @@ class MergeScene extends Phaser.Scene {
         
         // Get positions of first two cells (0,0) and (0,1)
         const cell1X = this.gridStartX;
-        const cell1Y = this.GRID_START_Y;
+        const cell1Y = this.gridStartY;
         const cell2X = this.gridStartX + (this.CELL_SIZE + this.CELL_GAP);
-        const cell2Y = this.GRID_START_Y;
+        const cell2Y = this.gridStartY;
         
         // Create pointer positioned below the first cell center
         const pointerStartY = cell1Y + CONFIG.MERGE_TUTORIAL.POINTER_OFFSET_Y;

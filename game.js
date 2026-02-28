@@ -309,8 +309,8 @@
             const batteryIconLevel = getBatteryIconLevel(level);
             const batteryIcon = `battery${batteryIconLevel}`;
             
-            // Create battery sprite in slot
-            const batterySprite = this.add.image(slot.x, slot.y, batteryIcon).setScale(CONFIG.CELL.BATTERY_SCALE);
+            // Create battery sprite in slot (using same offset as grid cells)
+            const batterySprite = this.add.image(slot.x, slot.y + CONFIG.CELL.BATTERY_Y_OFFSET, batteryIcon).setScale(CONFIG.CELL.BATTERY_SCALE);
             
             // Make battery draggable
             const hitArea = new Phaser.Geom.Rectangle(
@@ -326,8 +326,8 @@
                 useHandCursor: true
             });
             
-            // Level text at top
-            const levelText = this.add.text(slot.x, slot.y - 45, `LVL ${level}`, {
+            // Level text at top (using same offset as grid cells)
+            const levelText = this.add.text(slot.x, slot.y + CONFIG.CELL.BATTERY_Y_OFFSET + CONFIG.CELL.LEVEL_TEXT_Y_OFFSET, `LVL ${level}`, {
                 fontSize: CONFIG.CELL.LEVEL_TEXT_SIZE,
                 fontFamily: CONFIG.FONT_FAMILY,
                 color: CONFIG.CELL.LEVEL_TEXT_COLOR,
@@ -350,7 +350,7 @@
                 level: level,
                 slotIndex: slotIndex,
                 originalX: slot.x,
-                originalY: slot.y,
+                originalY: slot.y + CONFIG.CELL.BATTERY_Y_OFFSET,
                 inGrid: false,
                 inChargingSlot: true
             };
@@ -1071,9 +1071,9 @@
             
             // Get positions of first two cells (0,0) and (0,1)
             const cell1X = this.gridStartX;
-            const cell1Y = this.GRID_START_Y;
+            const cell1Y = this.gridStartY;
             const cell2X = this.gridStartX + (this.CELL_SIZE + this.CELL_GAP);
-            const cell2Y = this.GRID_START_Y;
+            const cell2Y = this.gridStartY;
             
             // Create pointer with tip at horizontal center of cells
             const mergePointer = this.add.image(
