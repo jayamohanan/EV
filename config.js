@@ -7,6 +7,42 @@ var CONFIG = {
     BATTERY_START_LEVEL: 7,        // Starting level for spawned batteries (1-7). Set higher to test high-level sprites without merging
     BATTERY_IMAGE_EXTENSIONS: ['svg', 'png', 'jpg', 'webp'],  // Priority order for battery image extensions
     
+    // UI Button Configuration
+    BUTTON: {
+        // Spawn button
+        SPAWN_WIDTH: 250,              // Width of spawn button
+        SPAWN_HEIGHT: 90,              // Height of spawn button
+        SPAWN_COLOR: 0x4CAF50,         // Green background color
+        SPAWN_BORDER_COLOR: 0x2E7D32,  // Dark green border
+        SPAWN_BORDER_WIDTH: 8,         // Border width
+        
+        // Level-up button
+        LEVELUP_WIDTH: 180,            // Width of level-up button
+        LEVELUP_HEIGHT: 70,            // Height of level-up button
+        LEVELUP_COLOR: 0xFF9800,       // Orange background color
+        LEVELUP_BORDER_COLOR: 0xE65100, // Dark orange border
+        LEVELUP_BORDER_WIDTH: 4,       // Border width
+        
+        // Button positioning
+        BOTTOM_PADDING: 80,            // Distance from bottom of screen (pixels)
+        BUTTON_SPACING: 220,           // Horizontal spacing between buttons
+        
+        // Battery icon in spawn button (fixed size, independent of image resolution)
+        BATTERY_ICON_WIDTH: 45,        // Display width in pixels (fixed size)
+        BATTERY_ICON_HEIGHT: 45,       // Display height in pixels (fixed size)
+        BATTERY_ICON_X: -80,           // X position offset from button center
+        BATTERY_ICON_Y: 0,             // Y position offset from button center
+        
+        // Coin display in buttons
+        COIN_TEXT_SIZE: '32px',        // Font size for coin cost text
+        COIN_TEXT_X: 20,               // X position offset from button center
+        COIN_TEXT_Y: 0,                // Y position offset from button center
+        COIN_ICON_WIDTH: 35,           // Display width in pixels (fixed size)
+        COIN_ICON_HEIGHT: 35,          // Display height in pixels (fixed size)
+        COIN_ICON_X: 60,               // X position offset from button center
+        COIN_ICON_Y: 0,                // Y position offset from button center
+    },
+    
     // Grid Cell Configuration
     CELL: {
         SIZE: 100,                      // Cell width and height in pixels

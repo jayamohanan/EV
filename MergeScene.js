@@ -138,27 +138,30 @@ class MergeScene extends Phaser.Scene {
     createButtons() {
         const sceneWidth = this.cameras.main.width;
         const sceneHeight = this.cameras.main.height;
-        const buttonY = sceneHeight - 80;
+        const buttonY = sceneHeight - CONFIG.BUTTON.BOTTOM_PADDING;
         
         // Spawn button
         const spawnButton = this.add.container(sceneWidth / 2, buttonY);
         
-        const spawnBg = this.add.rectangle(0, 0, 200, 70, 0x4CAF50);
-        spawnBg.setStrokeStyle(4, 0x2E7D32);
+        const spawnBg = this.add.rectangle(0, 0, CONFIG.BUTTON.SPAWN_WIDTH, CONFIG.BUTTON.SPAWN_HEIGHT, CONFIG.BUTTON.SPAWN_COLOR);
+        spawnBg.setStrokeStyle(CONFIG.BUTTON.SPAWN_BORDER_WIDTH, CONFIG.BUTTON.SPAWN_BORDER_COLOR);
         spawnBg.setInteractive({ useHandCursor: true });
         
-        // Battery icon on button
-        const spawnIcon = this.add.image(-60, 0, 'battery1').setScale(0.4);
+        // Battery icon on button - use correct level based on BATTERY_START_LEVEL
+        const batteryIconLevel = getBatteryIconLevel(this.spawnButtonLevel);
+        const spawnIcon = this.add.image(CONFIG.BUTTON.BATTERY_ICON_X, CONFIG.BUTTON.BATTERY_ICON_Y, `battery${batteryIconLevel}`);
+        spawnIcon.setDisplaySize(CONFIG.BUTTON.BATTERY_ICON_WIDTH, CONFIG.BUTTON.BATTERY_ICON_HEIGHT);
         
-        this.spawnButtonText = this.add.text(15, 0, `10`, {
-            fontSize: '24px',
+        this.spawnButtonText = this.add.text(CONFIG.BUTTON.COIN_TEXT_X, CONFIG.BUTTON.COIN_TEXT_Y, `10`, {
+            fontSize: CONFIG.BUTTON.COIN_TEXT_SIZE,
             fontFamily: CONFIG.FONT_FAMILY,
             color: '#FFFFFF',
             fontStyle: 'bold'
         }).setOrigin(0.5);
         
         // Coin icon on button
-        const spawnCoinIcon = this.add.image(40, 0, 'coin').setScale(0.12);
+        const spawnCoinIcon = this.add.image(CONFIG.BUTTON.COIN_ICON_X, CONFIG.BUTTON.COIN_ICON_Y, 'coin');
+        spawnCoinIcon.setDisplaySize(CONFIG.BUTTON.COIN_ICON_WIDTH, CONFIG.BUTTON.COIN_ICON_HEIGHT);
         
         spawnButton.add([spawnBg, spawnIcon, this.spawnButtonText, spawnCoinIcon]);
         
@@ -168,12 +171,13 @@ class MergeScene extends Phaser.Scene {
         
         this.spawnButton = spawnButton;
         this.spawnButtonBg = spawnBg;
+        this.spawnButtonIcon = spawnIcon;  // Store icon reference for updating
         
         // Level-up button (left of spawn button)
-        const levelUpButton = this.add.container(sceneWidth / 2 - 220, buttonY);
+        const levelUpButton = this.add.container(sceneWidth / 2 - CONFIG.BUTTON.BUTTON_SPACING, buttonY);
         
-        const levelUpBg = this.add.rectangle(0, 0, 180, 70, 0xFF9800);
-        levelUpBg.setStrokeStyle(4, 0xE65100);
+        const levelUpBg = this.add.rectangle(0, 0, CONFIG.BUTTON.LEVELUP_WIDTH, CONFIG.BUTTON.LEVELUP_HEIGHT, CONFIG.BUTTON.LEVELUP_COLOR);
+        levelUpBg.setStrokeStyle(CONFIG.BUTTON.LEVELUP_BORDER_WIDTH, CONFIG.BUTTON.LEVELUP_BORDER_COLOR);
         levelUpBg.setInteractive({ useHandCursor: true });
         
         const levelUpText = this.add.text(0, 0, '📺 Level Up\nAll', {
@@ -744,6 +748,10 @@ class MergeScene extends Phaser.Scene {
                 this.spawnButtonLevel = newButtonLevel;
                 this.spawnCost = newButtonLevel * 10;
                 this.spawnButtonText.setText(`${this.spawnCost}`);
+                
+                // Update battery icon texture to match new level
+                const batteryIconLevel = getBatteryIconLevel(this.spawnButtonLevel);
+                this.spawnButtonIcon.setTexture(`battery${batteryIconLevel}`);
             }
         }
         
@@ -752,7 +760,7 @@ class MergeScene extends Phaser.Scene {
             this.spawnButtonBg.setFillStyle(0x888888);
             this.spawnButtonBg.disableInteractive();
         } else {
-            this.spawnButtonBg.setFillStyle(0x4CAF50);
+            this.spawnButtonBg.setFillStyle(CONFIG.BUTTON.SPAWN_COLOR);
             this.spawnButtonBg.setInteractive({ useHandCursor: true });
         }
     }
