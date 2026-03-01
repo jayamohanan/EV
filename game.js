@@ -65,6 +65,7 @@
             
             this.load.image('coin', 'graphics/coin.svg');
             this.load.image('point', 'graphics/point.png');
+            this.load.image('button', 'graphics/Button.png');
             
             // Load charging effect
             this.load.image('bolt', 'graphics/bolt_64.png');
@@ -927,8 +928,8 @@
             // Spawn button
             const spawnButton = this.add.container(sceneWidth / 2, buttonY);
             
-            const spawnBg = this.add.rectangle(0, 0, CONFIG.BUTTON.SPAWN_WIDTH, CONFIG.BUTTON.SPAWN_HEIGHT, CONFIG.BUTTON.SPAWN_COLOR);
-            spawnBg.setStrokeStyle(CONFIG.BUTTON.SPAWN_BORDER_WIDTH, CONFIG.BUTTON.SPAWN_BORDER_COLOR);
+            const spawnBg = this.add.image(0, 0, 'button');
+            spawnBg.setDisplaySize(CONFIG.BUTTON.SPAWN_WIDTH+30, CONFIG.BUTTON.SPAWN_HEIGHT+30);
             spawnBg.setInteractive({ useHandCursor: true });
             
             // Battery icon on button - use correct level based on BATTERY_START_LEVEL
@@ -1768,10 +1769,10 @@
             
             // Disable button if not enough coins
             if (this.coins < this.spawnCost) {
-                this.spawnButtonBg.setFillStyle(0x888888);
+                this.spawnButtonBg.setTint(0x888888);
                 this.spawnButtonBg.disableInteractive();
             } else {
-                this.spawnButtonBg.setFillStyle(CONFIG.BUTTON.SPAWN_COLOR);
+                this.spawnButtonBg.clearTint();
                 this.spawnButtonBg.setInteractive({ useHandCursor: true });
             }
         }
